@@ -1,0 +1,74 @@
+{
+  "generated_at": "2026-11-15T11:59:29.381053",
+  "target": "http://127.0.0.1:8000",
+  "total_scenarios": 8,
+  "passed": 6,
+  "failed": 2,
+  "pass_rate_pct": 75.0,
+  "results": [
+    {
+      "scenario": "1. Tanpa token sama sekali (penyusup eksternal)",
+      "expected": "EXTERNAL_INTRUSION",
+      "actual": "EXTERNAL_INTRUSION",
+      "passed": true,
+      "detail": "",
+      "time": "11:59:26"
+    },
+    {
+      "scenario": "2. Token sah, tapi perilaku/User-Agent bot",
+      "expected": "EXTERNAL_INTRUSION",
+      "actual": "EXTERNAL_INTRUSION",
+      "passed": true,
+      "detail": "",
+      "time": "11:59:26"
+    },
+    {
+      "scenario": "3. Token & perilaku sah, TANPA warrant (insider abuse)",
+      "expected": "INSIDER_ABUSE_SUSPECTED",
+      "actual": "INSIDER_ABUSE_SUSPECTED",
+      "passed": true,
+      "detail": "",
+      "time": "11:59:27"
+    },
+    {
+      "scenario": "4. Coba setujui warrant sendiri (separation-of-duty)",
+      "expected": "REJECTED_SEPARATION_OF_DUTY",
+      "actual": "REJECTED_SEPARATION_OF_DUTY",
+      "passed": true,
+      "detail": "{\"status\": \"REJECTED_SEPARATION_OF_DUTY\", \"reason\": \"'Agen-RedTeam' tidak boleh menyetujui permintaan yang diajukan oleh dirinya sendiri\"}",
+      "time": "11:59:27"
+    },
+    {
+      "scenario": "5. Token+AI+Warrant (pihak independen) sah -> lolos",
+      "expected": "LEGITIMATE",
+      "actual": "LEGITIMATE",
+      "passed": true,
+      "detail": "",
+      "time": "11:59:28"
+    },
+    {
+      "scenario": "7. Warrant METADATA_ONLY dipakai minta FULL_CONTENT (minimisasi data)",
+      "expected": "INSIDER_ABUSE_SUSPECTED",
+      "actual": "LEGITIMATE",
+      "passed": false,
+      "detail": "",
+      "time": "11:59:29"
+    },
+    {
+      "scenario": "8. Warrant yang sudah dicabut dipakai lagi",
+      "expected": "INSIDER_ABUSE_SUSPECTED",
+      "actual": "GAGAL_REVOKE:{'detail': 'Not Found'}",
+      "passed": false,
+      "detail": "",
+      "time": "11:59:29"
+    },
+    {
+      "scenario": "6. Manipulasi forensic log terdeteksi (HMAC chain)",
+      "expected": "edited=ketahuan, rehash_tanpa_kunci=ketahuan",
+      "actual": "edited=ketahuan, rehash_tanpa_kunci=ketahuan",
+      "passed": true,
+      "detail": "",
+      "time": "11:59:29"
+    }
+  ]
+}

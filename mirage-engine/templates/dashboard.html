@@ -1,0 +1,3265 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KARTIKA-MIRAGE // Counter-Surveillance C2</title>
+
+    <!-- Google Fonts: Oswald (Headings/Display) & IBM Plex Mono (Technical/Data) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS (Layout/Flexbox utilities) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- GSAP & MotionPathPlugin (CDN) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/MotionPathPlugin.min.js"></script>
+    <!-- ATTACK-MAP:START -->
+    <!-- Library Peta D3 & TopoJSON -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+    <!-- ATTACK-MAP:END -->
+
+<style>
+        :root {
+            --bg: #070304;
+            --bg-2: #0d0507;
+            --maroon-950: #2a060f;
+            --maroon-900: #3b0a14;
+            --maroon-700: #6b0f24;
+            --maroon-600: #800020;
+            --crimson: #c81e3a;
+            --rose: #ff4d6d;
+            --rose-soft: #ff8fa3;
+            --glass: rgba(128, 0, 32, 0.16);
+            --glass-strong: rgba(128, 0, 32, 0.30);
+            --glass-border: rgba(255, 90, 110, 0.18);
+            --glass-border-hot: rgba(255, 77, 109, 0.55);
+            --ink: #f2e9e9;
+            --dim: #9a8588;
+            --faint: rgba(255, 255, 255, 0.10);
+            --safe: #2dd4bf;
+            --safe-glow: rgba(45, 212, 191, 0.35);
+            --warn: #fbbf24;
+            --alert: #ff4d6d;
+            --alert-glow: rgba(255, 77, 109, 0.40);
+            --ease-out: cubic-bezier(.22, 1, .36, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg);
+            background-image: 
+                radial-gradient(900px 500px at 85% -10%, rgba(128, 0, 32, 0.35), transparent 60%),
+                radial-gradient(700px 400px at 0% 100%, rgba(107, 15, 36, 0.20), transparent 60%);
+            color: var(--ink);
+            font-family: 'IBM Plex Mono', monospace;
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+        }
+
+        .font-display {
+            font-family: 'Oswald', sans-serif;
+            letter-spacing: 0.04em;
+        }
+
+        .font-code {
+            font-family: 'IBM Plex Mono', monospace;
+        }
+
+        /* Glassmorphism styling with fallback */
+        .glass {
+            background: var(--glass);
+            backdrop-filter: blur(12px) saturate(120%);
+            -webkit-backdrop-filter: blur(12px) saturate(120%);
+            border: 1px solid var(--glass-border);
+            border-radius: 2px;
+        }
+        @supports not (backdrop-filter: blur(1px)) {
+            .glass {
+                background: rgba(40, 6, 14, 0.88);
+            }
+        }
+
+        /* HUD Corners (4 L-shaped brackets 8x8px) */
+        .hud-corners {
+            position: relative;
+        }
+        .hud-corners::before, .hud-corners::after {
+            content: '';
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-color: var(--rose-soft);
+            opacity: 0.6;
+            pointer-events: none;
+            z-index: 5;
+        }
+        .hud-corners::before {
+            top: -1px;
+            left: -1px;
+            border-top: 1px solid;
+            border-left: 1px solid;
+        }
+        .hud-corners::after {
+            bottom: -1px;
+            right: -1px;
+            border-bottom: 1px solid;
+            border-right: 1px solid;
+        }
+        .hud-tr {
+            position: absolute;
+            top: -1px;
+            right: -1px;
+            width: 8px;
+            height: 8px;
+            border-top: 1px solid var(--rose-soft);
+            border-right: 1px solid var(--rose-soft);
+            opacity: 0.6;
+            pointer-events: none;
+            z-index: 5;
+        }
+        .hud-bl {
+            position: absolute;
+            bottom: -1px;
+            left: -1px;
+            width: 8px;
+            height: 8px;
+            border-bottom: 1px solid var(--rose-soft);
+            border-left: 1px solid var(--rose-soft);
+            opacity: 0.6;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        /* Section divider */
+        .section-divider {
+            border-top: 1px solid var(--faint);
+        }
+
+        /* Buttons .btn-tech */
+        .btn-tech {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            color: var(--ink);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.75rem;
+            letter-spacing: 0.04em;
+            padding: 12px 16px;
+            transition: all 0.15s ease;
+            text-align: left;
+            border-radius: 2px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            cursor: pointer;
+        }
+        .btn-tech:hover {
+            border-color: var(--glass-border-hot);
+            box-shadow: 0 0 0 1px rgba(255, 77, 109, 0.25), 0 0 18px rgba(255, 77, 109, 0.18);
+            background: var(--glass-strong);
+        }
+        .btn-tech:focus-visible {
+            outline: 2px solid var(--rose);
+            outline-offset: 2px;
+        }
+        .btn-tech-alert {
+            color: var(--rose);
+            border-color: var(--glass-border-hot);
+        }
+        .btn-tech-alert:hover {
+            border-color: var(--rose);
+            box-shadow: 0 0 0 1px rgba(255, 77, 109, 0.4), 0 0 22px rgba(255, 77, 109, 0.3);
+        }
+        .btn-tech:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Status banner accent bar */
+        #banner-accent-bar {
+            height: 4px;
+            background: linear-gradient(90deg, var(--maroon-600) 0%, var(--rose) 50%, var(--maroon-600) 100%);
+            box-shadow: 0 0 16px var(--alert-glow);
+            transform-origin: left center;
+            transform: scaleX(0);
+            transition: transform 0.4s var(--ease-out);
+            width: 100%;
+        }
+        #banner-accent-bar.active {
+            transform: scaleX(1);
+        }
+
+        /* Topology Node Styling */
+        .topo-node {
+            position: relative;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            padding: 10px 12px;
+            border-radius: 2px;
+            transition: border-color 0.25s, box-shadow 0.25s, opacity 0.25s;
+            max-width: 260px;
+            min-height: 92px;
+            width: 100%;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            user-select: none;
+        }
+        .topo-node-active-safe {
+            border-color: var(--safe) !important;
+            box-shadow: 0 0 0 1px var(--safe-glow), 0 0 22px var(--safe-glow) !important;
+        }
+        .topo-node-active-alert {
+            border-color: var(--glass-border-hot) !important;
+            box-shadow: 0 0 0 1px var(--alert-glow), 0 0 22px var(--alert-glow) !important;
+            animation: alertPulse 1.6s infinite ease-in-out;
+        }
+        .topo-node-dim {
+            opacity: 0.45;
+        }
+
+        @keyframes alertPulse {
+            0%, 100% {
+                box-shadow: 0 0 0 1px var(--alert-glow), 0 0 18px var(--alert-glow);
+            }
+            50% {
+                box-shadow: 0 0 0 1px var(--alert-glow), 0 0 28px var(--alert-glow);
+            }
+        }
+
+        /* Connection Port Dots */
+        .port-dot {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border-radius: 9999px;
+            border: 1px solid var(--glass-border-hot);
+            background-color: var(--bg);
+            z-index: 10;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+        .port-left { left: -3px; top: 50%; transform: translateY(-50%); }
+        .port-right { right: -3px; top: 50%; transform: translateY(-50%); }
+        .port-top { top: -3px; left: 50%; transform: translateX(-50%); }
+        .port-bottom { bottom: -3px; left: 50%; transform: translateX(-50%); }
+
+        @media (min-width: 768px) {
+            .port-top, .port-bottom { display: none; }
+            .port-left, .port-right { display: block; }
+        }
+        @media (max-width: 767px) {
+            .port-left, .port-right { display: none; }
+            .port-top, .port-bottom { display: block; }
+        }
+
+        /* Animated Dash for Flow Paths */
+        @keyframes flowDash {
+            to {
+                stroke-dashoffset: -28;
+            }
+        }
+        .edge-flow.active {
+            opacity: 1 !important;
+            animation: flowDash 0.9s linear infinite;
+        }
+
+        /* Edge Label Pills */
+        .edge-label {
+            position: absolute;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            padding: 2px 8px;
+            background: rgba(7, 3, 4, 0.94);
+            border: 1px solid var(--faint);
+            border-radius: 9999px;
+            color: var(--dim);
+            transform: translate(-50%, -50%);
+            white-space: nowrap;
+            pointer-events: none;
+            transition: border-color 0.2s, color 0.2s, opacity 0.2s;
+            z-index: 5;
+        }
+        #label-p-l4 {
+            font-size: 9px;
+            padding: 1.5px 6px;
+            letter-spacing: 0.04em;
+        }
+        @media (max-width: 767px) {
+            .edge-label:not(.active) {
+                display: none !important;
+            }
+        }
+
+        /* Live dot blink */
+        @keyframes liveBlink {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.3; transform: scale(0.85); }
+        }
+        .live-dot {
+            animation: liveBlink 1.4s ease-in-out infinite;
+        }
+
+        /* Cursor blink */
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        .cursor-blink {
+            animation: blink 1s step-start infinite;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 77, 109, 0.3);
+            border-radius: 2px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--rose);
+        }
+
+        /* Accessibility: prefers-reduced-motion */
+        @media (prefers-reduced-motion: reduce) {
+            #packet-dot, #packet-trail-1, #packet-trail-2, #packet-trail-3, #scanline-overlay {
+                display: none !important;
+            }
+            .topo-node, .btn-tech, #banner-accent-bar, .edge-flow {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+    </style>
+
+</head>
+<body class="p-4 md:p-8 min-h-screen relative overflow-x-hidden">
+
+    <!-- Background Grid Overlay (40px) -->
+    <div class="fixed inset-0 pointer-events-none z-0" style="background-image: linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px); background-size: 40px 40px;"></div>
+
+    <!-- Scanline Overlay (2px/4px) -->
+    <div id="scanline-overlay" class="fixed inset-0 pointer-events-none z-50 opacity-35" style="background-image: repeating-linear-gradient(0deg, rgba(0,0,0,0.25) 0px, rgba(0,0,0,0.25) 2px, transparent 2px, transparent 4px);"></div>
+
+    <div class="relative z-10 max-w-6xl mx-auto space-y-8">
+
+        <!-- HEADER -->
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+            <div class="flex items-center gap-3">
+                <!-- SVG Hexagon Logo (28px) -->
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--rose)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="shrink-0">
+                    <path d="M12 2l8.5 4.9v9.8L12 21.6 3.5 16.7V6.9L12 2z" />
+                    <circle cx="12" cy="12" r="2.2" fill="var(--rose)" />
+                </svg>
+                <div>
+                    <h1 class="font-display text-2xl font-bold tracking-[0.06em] text-[var(--ink)] leading-none">
+                        KARTIKA-MIRAGE <span class="text-xs font-normal text-[var(--dim)] font-code tracking-normal ml-1">// Counter-Surveillance C2</span>
+                    </h1>
+                    <p class="text-[11px] font-code text-[var(--dim)] mt-1">
+                        Kartika Cyber Hackathon 2026 // Active Cyber Defense & Honeypot Routing
+                    </p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2.5 font-code text-xs text-[var(--dim)] glass px-3 py-1.5 rounded-[2px]">
+                <span class="w-2 h-2 rounded-full bg-[var(--safe)] live-dot"></span>
+                <span>MODEL // Isolation Forest Active</span>
+            </div>
+        </header>
+
+        <!-- SECTION 01: STATUS BANNER -->
+        <section id="main-status-banner" class="section-divider pt-6 pb-2">
+            <div class="text-[11px] font-code text-[var(--dim)] uppercase tracking-[0.18em] mb-2">
+                // 01 STATUS OPERASI SISTEM
+            </div>
+            <h2 id="banner-text" class="font-display text-2xl sm:text-3xl md:text-4xl lg:text-[44px] font-bold uppercase tracking-tight text-[var(--ink)] leading-[1.15] [text-wrap:balance] transition-all duration-200">
+                Sistem Siaga // Standby Menunggu&nbsp;Trafik
+            </h2>
+            <p id="banner-sub" class="text-xs font-code text-[var(--dim)] mt-2.5 max-w-3xl leading-relaxed">
+                Gerbang pengawasan pasif aktif. Menunggu injeksi data atau anomali jaringan.
+            </p>
+            <!-- Garis accent 4px selebar halaman (muncul dengan animasi scaleX saat alert) -->
+            <div id="banner-accent-bar" class="hidden mt-4"></div>
+        </section>
+
+        <!-- SECTION 02: PANEL SIMULASI & SECTION 03: AI THREAT SCORE -->
+        <section class="section-divider pt-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- SECTION 02: PANEL SIMULASI OPERASI -->
+                <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-lg p-5 flex flex-col justify-between hud-corners glass">
+                    <span class="hud-tr"></span><span class="hud-bl"></span>
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <h2 class="text-sm font-bold text-slate-400">[ PANEL SIMULASI OPERASI SIBER AKTIF ]</h2>
+                            <button onclick="resetSystemLogs()" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[rgba(244,63,94,0.06)] hover:bg-[rgba(244,63,94,0.18)] border border-[rgba(244,63,94,0.25)] hover:border-[var(--rose)] text-[var(--dim)] hover:text-[var(--rose)] transition-all font-code text-[10px] cursor-pointer" title="Bersihkan seluruh log audit dan profil penyadap">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                <span>BERSIHKAN LOG</span>
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                            <button onclick="simLegit()" class="px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded cursor-pointer text-left transition-all shadow-[0_0_12px_rgba(16,185,129,0.2)] flex flex-col justify-between min-h-[58px]">
+                                <span class="text-[10px] opacity-80 uppercase block font-code font-normal">TAHAP 01</span>
+                                <span class="text-xs leading-snug">1. Trafik VIP Sah (Normal)</span>
+                            </button>
+                            <button onclick="simTokenLeakBot()" class="px-3.5 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded cursor-pointer text-left transition-all shadow-[0_0_12px_rgba(168,85,247,0.2)] flex flex-col justify-between min-h-[58px]">
+                                <span class="text-[10px] opacity-80 uppercase block font-code font-normal">TAHAP 02A // AI LAYER-2</span>
+                                <span class="text-xs leading-snug">2A. Token Bocor + Bot Burst (Uji AI Layer-2)</span>
+                            </button>
+                            <button onclick="simAttack()" class="px-3.5 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded cursor-pointer text-left transition-all shadow-[0_0_12px_rgba(245,158,11,0.2)] flex flex-col justify-between min-h-[58px]">
+                                <span class="text-[10px] opacity-80 uppercase block font-code font-normal">TAHAP 02B // LAYER-1</span>
+                                <span class="text-xs leading-snug">2B. Penyadap Tanpa Token (Uji Layer-1)</span>
+                            </button>
+                            <button onclick="simInsider()" class="px-3.5 py-2.5 bg-sky-700 hover:bg-sky-600 text-white font-bold rounded cursor-pointer text-left transition-all shadow-[0_0_12px_rgba(14,165,233,0.2)] flex flex-col justify-between min-h-[58px]">
+                                <span class="text-[10px] opacity-80 uppercase block font-code font-normal">TAHAP 02C // LAYER-3</span>
+                                <span class="text-xs leading-snug">2C. Akses Sah Tanpa Warrant (Insider)</span>
+                            </button>
+                            <button onclick="openSandbox()" class="px-3.5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded cursor-pointer text-left transition-all shadow-[0_0_12px_rgba(244,63,94,0.2)] flex flex-col justify-between min-h-[58px]">
+                                <span class="text-[10px] opacity-80 uppercase block font-code font-normal">TAHAP 03 // ALERT</span>
+                                <span class="text-xs leading-snug">3. Buka File Sadapan (Trigger Telemetri)</span>
+                            </button>
+                            <button onclick="simHoneytoken()" class="px-3.5 py-2.5 bg-fuchsia-800 hover:bg-fuchsia-700 text-white font-bold rounded cursor-pointer text-left transition-all shadow-[0_0_12px_rgba(192,38,211,0.2)] flex flex-col justify-between min-h-[58px]">
+                                <span class="text-[10px] opacity-80 uppercase block font-code font-normal">TAHAP 04 // HONEYTOKEN + TAR-PIT</span>
+                                <span class="text-xs leading-snug">4. Penyerang Pakai Kredensial Umpan &amp; Tertahan</span>
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Terminal Prompt Row -->
+                    <div class="mt-4 flex items-start gap-2 font-code text-xs p-2.5 bg-[rgba(7,3,4,0.6)] border border-[var(--faint)] rounded-[2px] min-h-[38px]">
+                        <span class="text-[var(--rose)] font-bold select-none">&gt;</span>
+                        <p id="sim-status" class="text-cyan-400 flex-1 break-words">Sistem siap. Silakan jalankan simulasi di atas.</p>
+                        <span class="cursor-blink text-[var(--rose)] select-none">_</span>
+                    </div>
+                    <div id="tarpit-term-wrap" class="hidden mt-3 border border-[var(--faint)] rounded-[2px] bg-[rgba(7,3,4,0.6)]">
+                        <div class="flex items-center justify-between px-2.5 py-1.5 border-b border-[var(--faint)] font-code text-[10px] text-[var(--dim)]">
+                            <span>TERMINAL PENYERANG (simulasi) // tertahan: <span id="tarpit-timer" class="text-[var(--rose)]">0 dtk</span></span>
+                            <button onclick="stopTarpitDemo()" class="px-2 py-0.5 rounded border border-[var(--rose)] text-[var(--rose)] hover:bg-[rgba(255,77,109,0.18)] cursor-pointer">PENYERANG MENYERAH</button>
+                        </div>
+                        <pre id="tarpit-term" class="font-code text-[11px] text-cyan-400 p-2.5 max-h-44 overflow-y-auto whitespace-pre-wrap break-all"></pre>
+                    </div>
+                </div>
+
+                <!-- SECTION 03: AI THREAT SCORE -->
+                <div class="glass hud-corners p-5 flex flex-col justify-between">
+                    <span class="hud-tr"></span><span class="hud-bl"></span>
+                    <div>
+                        <div class="flex justify-between items-baseline mb-2">
+                            <div class="text-[11px] font-code text-[var(--dim)] uppercase tracking-[0.18em]">
+                                // 03 AI THREAT SCORE
+                            </div>
+                            <div id="threat-score-pill" class="font-code text-[10px] font-semibold px-2 py-0.5 rounded border border-[var(--faint)] text-[var(--dim)] bg-transparent">
+                                STATUS // PASSIVE
+                            </div>
+                        </div>
+                        <div class="flex items-baseline justify-between mt-2">
+                            <div id="threat-score-val" class="font-display text-5xl md:text-6xl font-bold text-[var(--ink)] leading-none tracking-tight">
+                                0%
+                            </div>
+                            <div id="threat-score-label" class="text-xs font-code text-[var(--dim)] text-right">
+                                Baseline Normal
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <div class="relative w-full">
+                            <div id="threat-score-bar-track" class="w-full h-[4px] bg-white/10 relative overflow-hidden rounded-[2px]">
+                                <div id="threat-score-bar" class="h-full transition-all duration-500 ease-out" style="width: 0%; background: var(--safe);"></div>
+                            </div>
+                            <!-- Tick markers -->
+                            <div class="absolute -top-1 bottom-0 left-[65%] w-[1px] h-[7px] bg-white/40 pointer-events-none"></div>
+                            <div class="absolute -top-1 bottom-0 left-[99%] w-[1px] h-[7px] bg-white/40 pointer-events-none"></div>
+                        </div>
+                        <div class="flex justify-between text-[10px] font-code text-[var(--dim)] mt-2">
+                            <span>00 SAFE</span>
+                            <span class="pl-8">65 ANOMALY</span>
+                            <span>99 CRITICAL</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+                <!-- ATTACK-MAP:START -->
+        <style>
+            /* =====================================================================
+               [RADAR POS PEMERIKSAAN TAKTIKAL CSS V2.2]
+               ===================================================================== */
+            .amap-radar-stage {
+                position: relative;
+                width: 100%;
+                height: 520px;
+                background: radial-gradient(circle at center, rgba(65, 12, 24, 0.45) 0%, rgba(18, 5, 10, 0.95) 70%, var(--bg) 100%);
+                overflow: hidden;
+                border-radius: 4px;
+                border: 1px solid rgba(244, 63, 94, 0.28);
+                box-shadow: 0 0 30px rgba(244, 63, 94, 0.12), inset 0 0 50px rgba(7, 3, 4, 0.8);
+            }
+            @media (max-width: 768px) {
+                .amap-radar-stage {
+                    height: 420px;
+                }
+            }
+            .amap-vignette {
+                position: absolute;
+                inset: 0;
+                pointer-events: none;
+                box-shadow: inset 0 0 60px 25px #070304, inset 0 0 120px 60px rgba(7,3,4,0.8);
+                z-index: 5;
+            }
+            @keyframes amapRadarSweep {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+            }
+            .amap-radar-sweep {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                width: 600px;
+                height: 600px;
+                margin-top: -300px;
+                margin-left: -300px;
+                border-radius: 50%;
+                pointer-events: none;
+                z-index: 2;
+                background: conic-gradient(from 0deg, rgba(244, 63, 94, 0.12) 0deg, rgba(244, 63, 94, 0) 50deg, transparent 50deg);
+                animation: amapRadarSweep 8s linear infinite;
+            }
+            .amap-step-card {
+                min-height: 64px;
+                transition: border-color 0.25s ease, box-shadow 0.25s ease, opacity 0.25s ease;
+            }
+            .amap-step-card.is-waiting {
+                opacity: 0.85;
+                border-color: rgba(255, 255, 255, 0.18);
+                background: rgba(14, 5, 8, 0.85);
+            }
+            .amap-step-card.is-active, .amap-step-card.active {
+                opacity: 1;
+                border-color: #f43f5e;
+                box-shadow: 0 0 18px -2px rgba(244, 63, 94, 0.5), inset 0 0 12px -2px rgba(244, 63, 94, 0.2);
+            }
+            .amap-step-card.is-done {
+                opacity: 0.85;
+                border-color: rgba(45, 212, 191, 0.5);
+            }
+        </style>
+
+        <!-- SECTION PANGGUNG TAKTIKAL PERTAHANAN SIBER -->
+        <section id="map-section" class="section-divider pt-6" aria-labelledby="map-title">
+            <!-- Header Section -->
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-baseline gap-2 mb-3">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <span class="text-[11px] font-code text-[var(--dim)] uppercase tracking-[0.18em]">// RADAR POS PEMERIKSAAN & COUNTER-SURVEILLANCE</span>
+                    <h2 id="map-title" class="text-xl md:text-2xl font-bold font-sans text-[var(--ink)] tracking-tight">
+                        Lihat bagaimana penyusup dikelabui
+                    </h2>
+                    <span class="inline-flex items-center gap-1 text-[11px] font-medium font-sans px-2 py-0.5 rounded-full bg-[rgba(244,63,94,0.15)] border border-[rgba(244,63,94,0.35)] text-[var(--rose-soft)]">
+                        <svg class="w-3.5 h-3.5 text-[var(--rose-soft)]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        <span>Penjelasan untuk umum</span>
+                    </span>
+                </div>
+                <div class="text-[11px] font-code text-[var(--dim)] tracking-wider">
+                    Gunakan tombol Tahap 1 sampai 4 di atas untuk menggerakkan alur taktikal.
+                </div>
+            </div>
+
+            <!-- PANGGUNG UTAMA (Radar Stage) -->
+            <div id="map-stage" class="amap-radar-stage">
+                <!-- SVG Radar Surface with expanded viewBox (880x520) -->
+                <svg id="map-svg" viewBox="0 0 880 520" preserveAspectRatio="xMidYMid meet" class="absolute inset-0 w-full h-full block" aria-label="Radar taktikal alur pemeriksaan dan pengelabuan siber" style="z-index: 1;">
+                    <defs>
+                        <filter id="amap-glow-rose" x="-50%" y="-50%" width="200%" height="200%">
+                            <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur" />
+                            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                        </filter>
+                        <filter id="amap-glow-teal" x="-50%" y="-50%" width="200%" height="200%">
+                            <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur" />
+                            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                        </filter>
+                        <filter id="amap-glow-amber" x="-50%" y="-50%" width="200%" height="200%">
+                            <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur" />
+                            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                        </filter>
+                    </defs>
+
+                    <!-- Crosshairs & Grid Lines centered at (440, 260) -->
+                    <line x1="60" y1="260" x2="820" y2="260" stroke="rgba(244,63,94,0.15)" stroke-width="1" stroke-dasharray="3 3"/>
+                    <line x1="440" y1="20" x2="440" y2="500" stroke="rgba(244,63,94,0.15)" stroke-width="1" stroke-dasharray="3 3"/>
+
+                    <!-- Angle Scales (High contrast 11px) -->
+                    <text x="440" y="16" fill="rgba(255,255,255,0.75)" font-size="11" font-weight="600" font-family="monospace" text-anchor="middle">000° UTARA</text>
+                    <text x="830" y="264" fill="rgba(255,255,255,0.75)" font-size="11" font-weight="600" font-family="monospace">090° TIMUR</text>
+                    <text x="440" y="512" fill="rgba(255,255,255,0.75)" font-size="11" font-weight="600" font-family="monospace" text-anchor="middle">180° SELATAN</text>
+                    <text x="50" y="264" fill="rgba(255,255,255,0.75)" font-size="11" font-weight="600" font-family="monospace" text-anchor="end">270° BARAT</text>
+
+                    <!-- Radar Concentric Rings -->
+                    <!-- Ring 3: Outer Danger Zone (Radius 235px) -->
+                    <circle cx="440" cy="260" r="235" fill="none" stroke="rgba(244,63,94,0.22)" stroke-width="1.5" stroke-dasharray="4 2"/>
+                    <path id="ring3-path" d="M 205 260 A 235 235 0 0 1 675 260" fill="none"/>
+                    <text fill="rgba(255,255,255,0.75)" font-size="11" font-weight="600" font-family="monospace" letter-spacing="0.14em">
+                        <textPath href="#ring3-path" startOffset="50%" text-anchor="middle">
+                            [ ZONA 3: JARINGAN LUAR / PUBLIK ]
+                        </textPath>
+                    </text>
+
+                    <!-- Ring 2: AI Checkpoint Perimeter (Radius 150px) -->
+                    <circle cx="440" cy="260" r="150" fill="none" stroke="rgba(244,63,94,0.3)" stroke-width="1.5"/>
+                    <path id="ring2-path" d="M 290 260 A 150 150 0 0 1 590 260" fill="none"/>
+                    <text fill="rgba(254,205,211,0.9)" font-size="11" font-weight="600" font-family="monospace" letter-spacing="0.14em">
+                        <textPath href="#ring2-path" startOffset="50%" text-anchor="middle">
+                            [ ZONA 2: PERIMETER AI ]
+                        </textPath>
+                    </text>
+
+                    <!-- ========================================================= -->
+                    <!-- 5 CIRCULAR NODES (UNIFIED CONSISTENT DESIGN) -->
+                    <!-- ========================================================= -->
+
+                    <!-- 1. Node Pengguna Resmi (Kiri: 235, 195) - Positioned safely away from top-left legend -->
+                    <g id="node-official" transform="translate(235, 195)">
+                        <circle r="20" fill="rgba(45,212,191,0.12)" stroke="#2dd4bf" stroke-width="1.5"/>
+                        <circle r="8" fill="#2dd4bf" filter="url(#amap-glow-teal)"/>
+                        <path d="M-4 -3 A4 4 0 1 1 4 -3 A4 4 0 1 1 -4 -3 Z M-7 5 C-7 2 -4 1 0 1 C4 1 7 2 7 5 Z" fill="#070304"/>
+                        <text y="-26" fill="#2dd4bf" font-size="11" font-weight="bold" font-family="sans-serif" text-anchor="middle">PENGGUNA RESMI</text>
+                        <text y="-14" fill="#cbd5e1" font-size="9" font-family="monospace" font-weight="600" text-anchor="middle">[VIP ACCESS]</text>
+                    </g>
+
+                    <!-- 2. Node Penyerang / Jalur Penyadap (Kanan: 690, 185) - WELL BELOW TOP-RIGHT OVERLAY! -->
+                    <g id="node-attacker" transform="translate(690, 185)">
+                        <circle id="amap-attacker-ring" r="22" fill="rgba(244,63,94,0.12)" stroke="#f43f5e" stroke-width="1.5" stroke-dasharray="4 2"/>
+                        <circle id="amap-attacker-core" r="9" fill="#f43f5e" filter="url(#amap-glow-rose)"/>
+                        <text y="3" fill="#fff" font-size="10" font-weight="bold" font-family="monospace" text-anchor="middle">?</text>
+                        <text id="amap-attacker-title" y="-28" fill="#f43f5e" font-size="11" font-weight="bold" font-family="sans-serif" text-anchor="middle">⚠️ JALUR PENYADAP</text>
+                        <text id="amap-attacker-sub" y="-15" fill="#fca5a5" font-size="9" font-family="monospace" font-weight="600" text-anchor="middle">[LOKASI ANONIM: ?]</text>
+                    </g>
+
+                    <!-- 3. POS PEMERIKSAAN AI (CIRCULAR NODE!) di Tengah (440, 180) -->
+                    <g id="node-checkpoint" transform="translate(440, 180)">
+                        <circle id="amap-cp-ring-pulse" r="28" fill="rgba(18,5,10,0.92)" stroke="rgba(244,63,94,0.4)" stroke-width="2"/>
+                        <circle id="amap-cp-core" r="14" fill="rgba(45,212,191,0.2)" stroke="#2dd4bf" stroke-width="1.5"/>
+                        <path id="amap-cp-icon" d="M-4 -5 L4 -5 L4 0 C4 3 0 5 0 5 C0 5 -4 3 -4 0 Z" fill="#2dd4bf"/>
+                        <text y="-34" fill="var(--ink)" font-size="11" font-weight="bold" font-family="sans-serif" text-anchor="middle">POS PEMERIKSAAN AI</text>
+                        <g id="amap-cp-status-pill" transform="translate(0, 36)">
+                            <rect id="amap-cp-status-bg" x="-85" y="-10" width="170" height="20" rx="3" fill="rgba(10,3,6,0.95)" stroke="#2dd4bf" stroke-width="1"/>
+                            <text id="amap-cp-status" y="3" fill="#2dd4bf" font-size="9" font-family="monospace" font-weight="bold" text-anchor="middle">[ SIAGA: PEMINDAI AKTIF ]</text>
+                        </g>
+                    </g>
+
+                    <!-- 4. PUSAT DATA VIP (CIRCULAR NODE) di Kiri-Bawah (310, 360) -->
+                    <g id="node-vip-center" transform="translate(310, 360)">
+                        <circle r="34" fill="rgba(45,212,191,0.06)" stroke="#2dd4bf" stroke-width="1.8" filter="url(#amap-glow-teal)"/>
+                        <circle r="16" fill="rgba(45,212,191,0.25)" stroke="#2dd4bf" stroke-width="1.5"/>
+                        <path d="M-6 -7 L6 -7 L6 1 C6 5 0 8 0 8 C0 8 -6 5 -6 1 Z" fill="#2dd4bf"/>
+                        <!-- Text Pill Below Node to prevent line/ring collision -->
+                        <g transform="translate(0, 48)">
+                            <rect x="-72" y="-12" width="144" height="34" rx="4" fill="rgba(7,3,4,0.94)" stroke="rgba(45,212,191,0.5)" stroke-width="1"/>
+                            <text y="1" fill="#2dd4bf" font-size="11" font-weight="bold" font-family="sans-serif" text-anchor="middle">PUSAT DATA VIP</text>
+                            <text y="15" fill="#f1f5f9" font-size="9" font-family="monospace" font-weight="600" text-anchor="middle">[INTI AMAN TERLINDUNGI]</text>
+                        </g>
+                    </g>
+
+                    <!-- 5. RUANG PALSU / DECOY (CIRCULAR NODE!) di Kanan-Bawah (570, 360) -->
+                    <g id="node-decoy-chamber" transform="translate(570, 360)">
+                        <circle id="amap-decoy-ring-outer" r="32" fill="rgba(251,191,36,0.06)" stroke="#fbbf24" stroke-width="1.8" stroke-dasharray="4 2" filter="url(#amap-glow-amber)"/>
+                        <circle id="amap-decoy-core" r="16" fill="rgba(251,191,36,0.2)" stroke="#fbbf24" stroke-width="1.5"/>
+                        <text y="4" fill="#fbbf24" font-size="12" font-weight="bold" text-anchor="middle">📦</text>
+                        <!-- Text Pill Below Node to prevent line/ring collision -->
+                        <g transform="translate(0, 48)">
+                            <rect x="-72" y="-12" width="144" height="42" rx="4" fill="rgba(7,3,4,0.94)" stroke="rgba(251,191,36,0.5)" stroke-width="1"/>
+                            <text y="1" fill="#fbbf24" font-size="11" font-weight="bold" font-family="sans-serif" text-anchor="middle">RUANG PALSU</text>
+                            <text y="14" fill="#fde68a" font-size="9" font-family="monospace" font-weight="600" text-anchor="middle">[SANDBOX JEBAKAN]</text>
+                            <text id="amap-decoy-doc-badge" y="25" fill="#fda4af" font-size="9" font-weight="bold" font-family="monospace" text-anchor="middle">UMPAN TERPASANG</text>
+                        </g>
+                    </g>
+
+                    <!-- ========================================================= -->
+                    <!-- DYNAMIC PATHS & BLIPS (CUMULATIVE ACROSS SCENES) -->
+                    <!-- ========================================================= -->
+                    <!-- Stage 1 Layer -->
+                    <g id="layer-scene1">
+                        <path id="amap-path-legit-to-cp" d="M 235 195 Q 330 160 412 180" fill="none" stroke="#2dd4bf" stroke-width="2.5" stroke-dasharray="260" stroke-dashoffset="260" filter="url(#amap-glow-teal)"/>
+                        <path id="amap-path-cp-to-vip" d="M 425 204 Q 380 280 310 326" fill="none" stroke="#2dd4bf" stroke-width="2.5" stroke-dasharray="220" stroke-dashoffset="220" filter="url(#amap-glow-teal)"/>
+                        <circle id="amap-dot-legit" cx="235" cy="195" r="5.5" fill="#fff" filter="url(#amap-glow-teal)" opacity="0"/>
+                    </g>
+
+                    <!-- Stage 2 Layer -->
+                    <g id="layer-scene2">
+                        <path id="amap-path-atk-to-cp" d="M 690 185 Q 565 150 468 180" fill="none" stroke="#f43f5e" stroke-width="2.5" stroke-dasharray="260" stroke-dashoffset="260" filter="url(#amap-glow-rose)"/>
+                        <path id="amap-path-cp-to-decoy" d="M 455 204 Q 500 280 570 328" fill="none" stroke="#fbbf24" stroke-width="2.5" stroke-dasharray="220" stroke-dashoffset="220" filter="url(#amap-glow-amber)"/>
+                        <circle id="amap-dot-attack" cx="690" cy="185" r="5.5" fill="#f43f5e" filter="url(#amap-glow-rose)" opacity="0"/>
+                    </g>
+
+                    <!-- Stage 3 Layer: Reverse Telemetry Tracking (ANIMATED BEAM SHOOTING OUT!) -->
+                    <g id="layer-scene3">
+                        <path id="amap-path-track-reverse" d="M 570 328 Q 660 270 690 207" fill="none" stroke="#f43f5e" stroke-width="3" filter="url(#amap-glow-rose)"/>
+                        <circle id="amap-track-head" cx="570" cy="328" r="6" fill="#fbbf24" stroke="#f43f5e" stroke-width="2" filter="url(#amap-glow-rose)" opacity="0"/>
+                        <circle id="amap-pulse-decoy" cx="570" cy="360" r="10" fill="none" stroke="#fbbf24" stroke-width="2" opacity="0"/>
+                        <g id="amap-target-reticle" transform="translate(690, 185)" opacity="0">
+                            <circle r="30" fill="none" stroke="#f43f5e" stroke-width="1.8" stroke-dasharray="6 3"/>
+                            <g transform="translate(0, -42)">
+                                <rect id="amap-origin-pill-bg" x="-115" y="-13" width="230" height="26" rx="4" fill="rgba(7,3,4,0.95)" stroke="#f43f5e" stroke-width="1.5"/>
+                                <text id="amap-origin-pill-text" y="4" fill="#fff1f2" font-size="11" font-weight="bold" font-family="sans-serif" text-anchor="middle">🎯 TERLACAK: LOKASI PENYADAP</text>
+                            </g>
+                        </g>
+                    </g>
+
+                    <!-- Compatibility dummy groups for tests -->
+                    <g id="map-camera-layer" style="display:none;"></g>
+                    <g id="map-layer-routes" style="display:none;"></g>
+                    <g id="map-layer-elements" style="display:none;"></g>
+                </svg>
+
+                <!-- Rotating radar sweep beam -->
+                <div class="amap-radar-sweep"></div>
+                <div class="amap-vignette"></div>
+
+                <!-- OVERLAYS DALAM PANGGUNG -->
+
+                <!-- Top-Left: Petunjuk Alur Taktikal (Kompak, Desktop & Tablet) -->
+                <div class="hidden sm:block absolute top-2.5 left-2.5 z-10 p-2 rounded bg-[rgba(10,3,6,0.94)] backdrop-blur-md border border-white/15 text-[11px] text-[var(--ink)] space-y-1 pointer-events-auto shadow-xl max-w-[205px]">
+                    <div class="text-[9px] font-bold font-code text-[var(--rose-soft)] tracking-wider uppercase mb-0.5">
+                        // PETUNJUK ALUR TAKTIKAL
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-[#2dd4bf] shadow-[0_0_8px_#2dd4bf] shrink-0"></span>
+                        <span class="font-sans text-[10px] leading-tight text-slate-200">1: Lolos Scan ➔ Pusat VIP</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-[#f43f5e] shadow-[0_0_8px_#f43f5e] shrink-0"></span>
+                        <span class="font-sans text-[10px] leading-tight text-slate-200">2: Tercegat AI ➔ Ruang Palsu</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-[#fbbf24] shadow-[0_0_8px_#fbbf24] shrink-0"></span>
+                        <span class="font-sans text-[10px] leading-tight text-slate-200">3: Umpan Buka ➔ Lacak Asal</span>
+                    </div>
+                </div>
+
+                <!-- Top-Right: Kotak Angka Ringkasan & Toolbar Taktis (Rapi & Kompak) -->
+                <div class="absolute top-3 right-3 z-10 flex flex-col items-end gap-1.5 pointer-events-auto">
+                    <!-- Angka ringkasan -->
+                    <div class="flex items-center gap-2 bg-[rgba(10,3,6,0.88)] backdrop-blur-md border border-white/10 rounded px-2.5 py-1.5 text-xs text-[var(--ink)] shadow-lg">
+                        <div class="text-right">
+                            <div class="text-[9px] font-code uppercase tracking-wider text-[var(--dim)] leading-tight">PERCOBAAN MENYADAP</div>
+                            <div id="map-stat-attempts" class="font-sans font-bold text-base text-[var(--rose-soft)] leading-none mt-0.5">0</div>
+                            <div class="text-[8px] text-[var(--dim)] leading-none mt-0.5">sejak halaman dibuka</div>
+                        </div>
+                        <div class="h-6 w-px bg-white/15 mx-1"></div>
+                        <div class="text-right">
+                            <div class="text-[9px] font-code uppercase tracking-wider text-[var(--dim)] leading-tight">PENYUSUP TERCATAT</div>
+                            <div id="map-stat-adversaries" class="font-sans font-bold text-base text-[var(--teal)] leading-none mt-0.5">0</div>
+                            <div class="text-[8px] text-[var(--dim)] leading-none mt-0.5">sejak halaman dibuka</div>
+                        </div>
+                    </div>
+
+                    <!-- Toolbar: Dropdown Sektor Simulasi & Tombol Putar Ulang -->
+                    <div class="flex items-center gap-1.5 bg-[rgba(10,3,6,0.88)] backdrop-blur-md border border-white/10 rounded p-1 text-xs shadow-lg">
+                        <div class="flex items-center gap-1 pl-1 text-[11px] font-sans text-[var(--dim)]">
+                            <label for="map-sim-select" class="shrink-0 text-[10px]">Sektor:</label>
+                            <select id="map-sim-select" class="bg-[rgba(18,5,10,0.95)] border border-white/15 text-[var(--ink)] text-[10px] rounded px-1.5 py-0.5 focus:outline-none focus:border-[var(--rose-soft)] cursor-pointer">
+                                <option value="">Data radar</option>
+                                <option value="Asia/Shanghai">Shanghai, Tiongkok</option>
+                                <option value="Europe/Moscow">Moskow, Rusia</option>
+                                <option value="America/New_York">New York, AS</option>
+                                <option value="Europe/Berlin">Berlin, Jerman</option>
+                                <option value="Asia/Tokyo">Tokyo, Jepang</option>
+                            </select>
+                        </div>
+                        <button id="map-btn-replay" type="button" class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[rgba(244,63,94,0.15)] hover:bg-[rgba(244,63,94,0.25)] border border-[rgba(244,63,94,0.3)] text-[10px] font-medium font-sans text-[var(--ink)] transition-colors cursor-pointer" title="Putar ulang adegan aktif">
+                            <svg class="w-3 h-3 text-[var(--rose-soft)]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            <span>Ulang</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Bottom-Left: Kartu Kasus Penyusup Terbaru (Hanya saat Adegan 3) -->
+                <div id="map-case-card" class="hidden absolute bottom-3 left-3 z-10 p-3 rounded bg-[rgba(10,3,6,0.92)] backdrop-blur-md border border-[rgba(244,63,94,0.5)] shadow-[0_0_20px_rgba(244,63,94,0.25)] text-xs font-sans text-[var(--ink)] max-w-[280px] md:max-w-[320px] leading-snug space-y-1 transition-all duration-300 pointer-events-auto">
+                    <div class="flex items-center justify-between border-b border-white/10 pb-1">
+                        <span class="font-bold text-[var(--rose-soft)] font-sans">Penyusup terbaru</span>
+                        <span id="map-case-code" class="font-code text-[11px] text-[var(--dim)]">#0000</span>
+                    </div>
+                    <div><span class="text-[var(--dim)]">Perkiraan asal:</span> <span id="map-case-origin" class="font-semibold text-[var(--ink)]">-</span></div>
+                    <div><span class="text-[var(--dim)]">Perangkat:</span> <span id="map-case-device" class="font-medium text-[var(--ink)]">-</span></div>
+                    <div><span class="text-[var(--dim)]">Ukuran layar:</span> <span id="map-case-screen" class="font-mono text-[var(--ink)]">-</span></div>
+                    <div><span class="text-[var(--dim)]">Zona waktu:</span> <span id="map-case-timezone" class="font-mono text-[var(--ink)]">-</span></div>
+                    <div><span class="text-[var(--dim)]">Status taktis:</span> <span class="text-[#fbbf24] font-bold">Terkunci di Sandbox Jebakan</span></div>
+                </div>
+            </div>
+
+            <!-- Baris Kalimat Panggung Selebar Penuh -->
+            <div id="map-stage-sentence-box" class="w-full mt-2.5 p-3 md:p-3.5 rounded bg-[rgba(10,3,6,0.85)] backdrop-blur-sm border border-white/10 text-center transition-all duration-300 shadow-md">
+                <p id="map-stage-sentence" class="text-sm md:text-base font-medium font-sans text-[var(--ink)] leading-snug tracking-normal">
+                    Pengguna resmi menuju pos pemeriksaan, di-scan aman, lalu diteruskan ke Pusat Data VIP.
+                </p>
+            </div>
+
+            <!-- Stepper 3 Kartu Sejajar -->
+            <div id="map-stepper" class="grid grid-cols-1 md:grid-cols-3 gap-2.5 mt-2.5">
+                <!-- Kartu Tahap 1 -->
+                <div id="map-step-1" class="amap-step-card is-active active p-3 rounded bg-[rgba(10,3,6,0.7)] backdrop-blur-sm border flex items-center justify-between gap-3 text-left">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <div class="amap-step-num w-8 h-8 rounded-full bg-[rgba(45,212,191,0.2)] border border-[#2dd4bf] flex items-center justify-center font-bold text-xs text-[#2dd4bf] shrink-0 font-sans">
+                            1
+                        </div>
+                        <div class="min-w-0">
+                            <div class="text-xs md:text-sm font-semibold font-sans text-[var(--ink)] leading-tight">
+                                Tahap 1 · Pengguna resmi lewat
+                            </div>
+                            <div class="text-[11px] font-sans text-[var(--dim)] leading-tight mt-0.5">
+                                Di-scan aman di Pos AI ➔ Pusat VIP
+                            </div>
+                        </div>
+                    </div>
+                    <span class="amap-step-badge shrink-0 text-[10px] font-sans font-bold px-2 py-0.5 rounded bg-[#2dd4bf]/20 text-[#2dd4bf] border border-[#2dd4bf]/40 whitespace-nowrap">
+                        AKTIF
+                    </span>
+                </div>
+
+                <!-- Kartu Tahap 2 -->
+                <div id="map-step-2" class="amap-step-card is-waiting p-3 rounded bg-[rgba(10,3,6,0.7)] backdrop-blur-sm border border-white/10 flex items-center justify-between gap-3 text-left">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <div class="amap-step-num w-8 h-8 rounded-full bg-white/5 border border-white/20 flex items-center justify-center font-bold text-xs text-[var(--dim)] shrink-0 font-sans">
+                            2
+                        </div>
+                        <div class="min-w-0">
+                            <div class="text-xs md:text-sm font-semibold font-sans text-[var(--ink)] leading-tight">
+                                Tahap 2 · Penyusup dikelabui
+                            </div>
+                            <div class="text-[11px] font-sans text-[var(--dim)] leading-tight mt-0.5">
+                                AI deteksi anomali ➔ Belok ke Ruang Palsu
+                            </div>
+                        </div>
+                    </div>
+                    <span class="amap-step-badge hidden shrink-0 text-[10px] font-sans font-bold px-2 py-0.5 rounded bg-[#f43f5e]/20 text-[#f43f5e] border border-[#f43f5e]/40 whitespace-nowrap">
+                        SEDANG TERJADI
+                    </span>
+                </div>
+
+                <!-- Kartu Tahap 3 -->
+                <div id="map-step-3" class="amap-step-card is-waiting p-3 rounded bg-[rgba(10,3,6,0.7)] backdrop-blur-sm border border-white/10 flex items-center justify-between gap-3 text-left">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <div class="amap-step-num w-8 h-8 rounded-full bg-white/5 border border-white/20 flex items-center justify-center font-bold text-xs text-[var(--dim)] shrink-0 font-sans">
+                            3
+                        </div>
+                        <div class="min-w-0">
+                            <div class="text-xs md:text-sm font-semibold font-sans text-[var(--ink)] leading-tight">
+                                Tahap 3 · Asal ketahuan
+                            </div>
+                            <div class="text-[11px] font-sans text-[var(--dim)] leading-tight mt-0.5">
+                                Umpan dibuka ➔ Posisi terlacak balik
+                            </div>
+                        </div>
+                    </div>
+                    <span class="amap-step-badge hidden shrink-0 text-[10px] font-sans font-bold px-2 py-0.5 rounded bg-[#f43f5e]/20 text-[#f43f5e] border border-[#f43f5e]/40 whitespace-nowrap">
+                        SEDANG TERJADI
+                    </span>
+                </div>
+            </div>
+        </section>
+        <!-- ATTACK-MAP:END -->
+
+        <!-- SECTION 04: TOPOLOGI ALIRAN DATA 4 LAPISAN (REDESAIN TOTAL) -->
+        <section class="section-divider pt-6">
+            <div class="flex justify-between items-baseline mb-3">
+                <div class="flex items-center gap-2 text-[11px] font-code text-[var(--dim)] uppercase tracking-[0.18em]">
+                    <span>// 04 TOPOLOGI ALIRAN DATA 4 LAPISAN</span>
+                    <!-- ATTACK-MAP:START -->
+                    <span class="amap-audience-chip inline-flex items-center gap-1 normal-case tracking-normal">
+                        <svg class="w-3.5 h-3.5 text-[var(--rose-soft)]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                        </svg>
+                        <span>Untuk tim teknis</span>
+                    </span>
+                    <!-- ATTACK-MAP:END -->
+                </div>
+                <div id="topology-status" class="text-xs font-code text-[var(--dim)] tracking-wider">
+                    RUTE // STANDBY
+                </div>
+            </div>
+
+            <!-- STAGE CONTAINER (Glass + HUD Corners) -->
+            <div id="topo-stage" class="relative glass hud-corners p-5 md:p-8 min-h-[360px] overflow-hidden select-none">
+                <span class="hud-tr"></span><span class="hud-bl"></span>
+
+                <!-- SVG OVERLAY: Dynamic paths, NO viewBox (coordinates = container pixels) -->
+                <svg id="topo-svg" class="absolute inset-0 w-full h-full pointer-events-none overflow-visible" style="z-index: 1;">
+                    <defs>
+                        <filter id="packet-glow" x="-50%" y="-50%" width="200%" height="200%">
+                            <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur" />
+                            <feMerge>
+                                <feMergeNode in="blur" />
+                                <feMergeNode in="SourceGraphic" />
+                            </feMerge>
+                        </filter>
+                        <!-- Arrow Markers: 8x8 small triangle -->
+                        <marker id="marker-gray" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                            <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="rgba(255, 255, 255, 0.25)" />
+                        </marker>
+                        <marker id="marker-teal" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                            <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--safe)" />
+                        </marker>
+                        <marker id="marker-rose" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                            <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--rose)" />
+                        </marker>
+                    </defs>
+
+                    <!-- BASE PATHS (Solid Lines, Required IDs) -->
+                    <path id="p-src" d="" fill="none" stroke="rgba(255, 255, 255, 0.12)" stroke-width="1.5" marker-end="url(#marker-gray)" />
+                    <path id="p-l2" d="" fill="none" stroke="rgba(255, 255, 255, 0.12)" stroke-width="1.5" marker-end="url(#marker-gray)" />
+                    <path id="p-l3" d="" fill="none" stroke="rgba(255, 255, 255, 0.12)" stroke-width="1.5" marker-end="url(#marker-gray)" />
+                    <path id="p-l4" d="" fill="none" stroke="rgba(255, 255, 255, 0.12)" stroke-width="1.5" marker-end="url(#marker-gray)" />
+
+                    <!-- FLOW PATHS (Animated Dashed Glow Lines) -->
+                    <path id="f-src" class="edge-flow" d="" fill="none" stroke="var(--ink)" stroke-width="2" stroke-dasharray="6 8" opacity="0" />
+                    <path id="f-l2" class="edge-flow" d="" fill="none" stroke="var(--safe)" stroke-width="2" stroke-dasharray="6 8" opacity="0" />
+                    <path id="f-l3" class="edge-flow" d="" fill="none" stroke="var(--rose)" stroke-width="2" stroke-dasharray="6 8" opacity="0" />
+                    <path id="f-l4" class="edge-flow" d="" fill="none" stroke="var(--rose)" stroke-width="2" stroke-dasharray="6 8" opacity="0" />
+
+                    <!-- ANIMATED PACKET DOT + TRAILS (GSAP Targets) -->
+                    <circle id="packet-trail-3" cx="-30" cy="-30" r="2" fill="var(--ink)" opacity="0" filter="url(#packet-glow)" />
+                    <circle id="packet-trail-2" cx="-30" cy="-30" r="2.5" fill="var(--ink)" opacity="0" filter="url(#packet-glow)" />
+                    <circle id="packet-trail-1" cx="-30" cy="-30" r="3" fill="var(--ink)" opacity="0" filter="url(#packet-glow)" />
+                    <circle id="packet-dot" cx="-30" cy="-30" r="4" fill="var(--ink)" opacity="0" filter="url(#packet-glow)" />
+                </svg>
+
+                <!-- TOPOLOGY LABELS LAYER (Edge pills) -->
+                <div id="topo-labels" class="absolute inset-0 pointer-events-none" style="z-index: 3;">
+                    <div id="label-p-l2" class="edge-label">token sah &amp; skor &lt; 65</div>
+                    <div id="label-p-l3" class="edge-label">token invalid / skor &gt;= 65</div>
+                    <div id="label-p-l4" class="edge-label">beacon terpicu</div>
+                </div>
+
+                <!-- TOPOLOGY GRID (Nodes + Legend) -->
+                <div id="topo-grid" class="relative grid grid-cols-2 md:grid-cols-4 gap-x-4 md:gap-x-12 lg:gap-x-16 gap-y-10 md:gap-y-14 items-center" style="z-index: 2;">
+
+                    <!-- NODE PENYADAP / SUMBER TRAFIK -->
+                    <div id="node-penyadap" class="topo-node hud-corners col-span-2 md:col-span-1 md:row-span-2 md:col-start-1 md:row-start-1">
+                        <span class="hud-tr"></span><span class="hud-bl"></span>
+                        <div class="port-dot port-left"></div>
+                        <div class="port-dot port-right"></div>
+                        <div class="port-dot port-top"></div>
+                        <div class="port-dot port-bottom"></div>
+                        <div class="w-9 h-9 rounded-[2px] bg-[var(--glass-strong)] border border-[var(--glass-border)] flex items-center justify-center shrink-0 text-[var(--ink)]">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="8" r="3.5" />
+                                <path d="M5 21c0-4 3-6.5 7-6.5s7 2.5 7 6.5" />
+                                <path id="penyadap-slash" class="hidden" d="M4 4l16 16" />
+                            </svg>
+                        </div>
+                        <div class="flex flex-col min-w-0 flex-1">
+                            <div class="flex items-center gap-1.5">
+                                <span class="font-code text-[10px] px-1 py-0.2 rounded border border-[var(--faint)] text-[var(--dim)] leading-none">SRC</span>
+                                <span class="font-display text-[15px] font-semibold text-[var(--ink)] leading-snug truncate">Sumber Trafik</span>
+                            </div>
+                            <div id="penyadap-sub" class="font-code text-[11px] text-[var(--dim)] truncate mt-0.5">Menunggu koneksi</div>
+                            <div class="mt-1.5">
+                                <span id="penyadap-chip" class="font-code text-[10px] font-semibold tracking-wider px-1.5 py-0.5 rounded border border-[var(--faint)] text-[var(--dim)] bg-transparent">IDLE</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- NODE L1: AI INSPECTOR (Percabangan) -->
+                    <div id="node-l1" class="topo-node hud-corners col-span-2 md:col-span-1 md:row-span-2 md:col-start-2 md:row-start-1 overflow-hidden">
+                        <span class="hud-tr"></span><span class="hud-bl"></span>
+                        <div class="port-dot port-left"></div>
+                        <div class="port-dot port-right"></div>
+                        <div class="port-dot port-top"></div>
+                        <div class="port-dot port-bottom"></div>
+                        <!-- Scanning Sweep Line -->
+                        <div class="l1-scan-bar absolute inset-x-0 h-[2px] bg-[var(--rose)] opacity-0 pointer-events-none" style="top: 0;"></div>
+                        <div class="w-9 h-9 rounded-[2px] bg-[var(--glass-strong)] border border-[var(--glass-border)] flex items-center justify-center shrink-0 text-[var(--ink)]">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5l8-3z" />
+                                <circle cx="12" cy="11" r="2" />
+                            </svg>
+                        </div>
+                        <div class="flex flex-col min-w-0 flex-1">
+                            <div class="flex items-center gap-1.5">
+                                <span class="font-code text-[10px] px-1 py-0.2 rounded border border-[var(--faint)] text-[var(--dim)] leading-none">L1</span>
+                                <span class="font-display text-[15px] font-semibold text-[var(--ink)] leading-snug truncate">AI Inspector</span>
+                            </div>
+                            <div class="font-code text-[11px] text-[var(--dim)] truncate mt-0.5">Decision Gate</div>
+                            <div class="mt-1.5">
+                                <span id="l1-chip" class="font-code text-[10px] font-semibold tracking-wider px-1.5 py-0.5 rounded border border-[var(--faint)] text-[var(--dim)] bg-transparent">IDLE</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- NODE L2: VIP SATCOM (Jalur Sah) -->
+                    <div id="node-l2" class="topo-node hud-corners col-start-1 md:col-start-3 row-start-3 md:row-start-1">
+                        <span class="hud-tr"></span><span class="hud-bl"></span>
+                        <div class="port-dot port-left"></div>
+                        <div class="port-dot port-right"></div>
+                        <div class="port-dot port-top"></div>
+                        <div class="port-dot port-bottom"></div>
+                        <div class="pulse-ring absolute inset-0 rounded-[2px] pointer-events-none border border-[var(--safe)] opacity-0"></div>
+                        <div class="w-9 h-9 rounded-[2px] bg-[var(--glass-strong)] border border-[var(--glass-border)] flex items-center justify-center shrink-0 text-[var(--ink)]">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="6" cy="18" r="1.5" />
+                                <path d="M6 12a6 6 0 0 1 6 6M6 6a12 12 0 0 1 12 12" />
+                            </svg>
+                        </div>
+                        <div class="flex flex-col min-w-0 flex-1">
+                            <div class="flex items-center gap-1.5">
+                                <span class="font-code text-[10px] px-1 py-0.2 rounded border border-[var(--faint)] text-[var(--dim)] leading-none">L2</span>
+                                <span class="font-display text-[15px] font-semibold text-[var(--ink)] leading-snug truncate">VIP Satcom</span>
+                            </div>
+                            <div class="font-code text-[11px] text-[var(--dim)] truncate mt-0.5">Trafik Sah Terenkripsi</div>
+                            <div class="mt-1.5">
+                                <span id="l2-chip" class="font-code text-[10px] font-semibold tracking-wider px-1.5 py-0.5 rounded border border-[var(--faint)] text-[var(--dim)] bg-transparent">IDLE</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- NODE L3: DECOY SANDBOX (Jalur Honeypot) -->
+                    <div id="node-l3" class="topo-node hud-corners col-start-2 md:col-start-3 row-start-3 md:row-start-2">
+                        <span class="hud-tr"></span><span class="hud-bl"></span>
+                        <div class="port-dot port-left"></div>
+                        <div class="port-dot port-right"></div>
+                        <div class="port-dot port-top"></div>
+                        <div class="port-dot port-bottom"></div>
+                        <div class="pulse-ring absolute inset-0 rounded-[2px] pointer-events-none border border-[var(--rose)] opacity-0"></div>
+                        <div class="w-9 h-9 rounded-[2px] bg-[var(--glass-strong)] border border-[var(--glass-border)] flex items-center justify-center shrink-0 text-[var(--ink)]">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.8 3h10.4a2 2 0 0 0 1.8-3l-5-9V3" />
+                            </svg>
+                        </div>
+                        <div class="flex flex-col min-w-0 flex-1">
+                            <div class="flex items-center gap-1.5">
+                                <span class="font-code text-[10px] px-1 py-0.2 rounded border border-[var(--faint)] text-[var(--dim)] leading-none">L3</span>
+                                <span class="font-display text-[14px] font-semibold text-[var(--ink)] leading-snug whitespace-nowrap">Decoy Sandbox</span>
+                            </div>
+                            <div class="font-code text-[11px] text-[var(--dim)] truncate mt-0.5">Poisoned Honeypot</div>
+                            <div class="mt-1.5">
+                                <span id="l3-chip" class="font-code text-[10px] font-semibold tracking-wider px-1.5 py-0.5 rounded border border-[var(--faint)] text-[var(--dim)] bg-transparent">IDLE</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TOPOLOGY LEGEND CELL (Desktop Col 4 Row 1, Mobile Row 4 Col 1) -->
+                    <div id="topo-legend" class="glass hud-corners p-3 text-[10px] font-code text-[var(--dim)] space-y-1.5 max-w-[232px] w-full col-start-1 md:col-start-4 row-start-4 md:row-start-1">
+                        <span class="hud-tr"></span><span class="hud-bl"></span>
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-[var(--safe)] shrink-0"></span>
+                            <span>Trafik sah -&gt; SATCOM</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-[var(--rose)] shrink-0"></span>
+                            <span>Dialihkan -&gt; Decoy</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-[var(--warn)] shrink-0"></span>
+                            <span>Menunggu beacon</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 border-b border-dashed border-white/40 shrink-0"></span>
+                            <span>Jejak rute sebelumnya</span>
+                        </div>
+                        <div class="pt-1.5 border-t border-[var(--faint)] text-[9px] text-[var(--ink)] truncate">
+                            SESI AKTIF // <span id="legend-session-id" class="text-[var(--rose)]">--</span>
+                        </div>
+                    </div>
+
+                    <!-- NODE L4: ADVERSARY DOSSIER (Target Intel) -->
+                    <div id="node-l4" class="topo-node hud-corners col-start-2 md:col-start-4 row-start-4 md:row-start-2">
+                        <span class="hud-tr"></span><span class="hud-bl"></span>
+                        <div class="port-dot port-left"></div>
+                        <div class="port-dot port-right"></div>
+                        <div class="port-dot port-top"></div>
+                        <div class="port-dot port-bottom"></div>
+                        <div class="pulse-ring absolute inset-0 rounded-[2px] pointer-events-none border border-[var(--rose)] opacity-0"></div>
+                        <div class="w-9 h-9 rounded-[2px] bg-[var(--glass-strong)] border border-[var(--glass-border)] flex items-center justify-center shrink-0 text-[var(--ink)]">
+                            <svg class="l4-crosshair" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="7" />
+                                <path d="M12 2v5M12 17v5M2 12h5M17 12h5" />
+                            </svg>
+                        </div>
+                        <div class="flex flex-col min-w-0 flex-1">
+                            <div class="flex items-center gap-1.5">
+                                <span class="font-code text-[10px] px-1 py-0.2 rounded border border-[var(--faint)] text-[var(--dim)] leading-none">L4</span>
+                                <span class="font-display text-[14px] font-semibold text-[var(--ink)] leading-snug whitespace-nowrap">Adversary Dossier</span>
+                            </div>
+                            <div class="font-code text-[11px] text-[var(--dim)] truncate mt-0.5">Telemetry Beacon</div>
+                            <div class="mt-1.5">
+                                <span id="l4-chip" class="font-code text-[10px] font-semibold tracking-wider px-1.5 py-0.5 rounded border border-[var(--faint)] text-[var(--dim)] bg-transparent">IDLE</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 05 & SECTION 06: LOGS & DOSSIER -->
+        <section class="section-divider pt-6">
+            <div class="flex items-center justify-between mb-3 px-1">
+                <div class="text-[11px] font-code text-[var(--dim)] uppercase tracking-[0.18em]">
+                    // 05 &amp; 06 AUDIT LOG &amp; COUNTER-INTEL DOSSIER
+                </div>
+                <button onclick="resetSystemLogs()" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[rgba(244,63,94,0.06)] hover:bg-[rgba(244,63,94,0.18)] border border-[rgba(244,63,94,0.25)] hover:border-[var(--rose)] text-[var(--dim)] hover:text-[var(--rose)] transition-all font-code text-[11px] cursor-pointer" title="Hapus seluruh riwayat log dan profil penyadap">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    <span>Bersihkan Semua Log</span>
+                </button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                <!-- SECTION 05: LOG DETEKSI & REROUTING -->
+                <div class="glass hud-corners p-5 flex flex-col">
+                    <span class="hud-tr"></span><span class="hud-bl"></span>
+                    <div class="flex justify-between items-baseline mb-3 pb-2 border-b border-[var(--faint)]">
+                        <div class="text-[11px] font-code text-[var(--dim)] uppercase tracking-[0.18em]">
+                            // 05 LOGS // DETEKSI &amp; REROUTING
+                        </div>
+                        <span class="text-[10px] font-code text-[var(--dim)]">STREAM REAL-TIME</span>
+                    </div>
+                    <div id="event-list" class="space-y-0 text-xs font-code max-h-80 overflow-y-auto pr-1 flex-1"></div>
+                </div>
+
+                <!-- SECTION 06: DOSSIER PENYADAP TERTANGKAP -->
+                <div class="glass hud-corners p-5 flex flex-col">
+                    <span class="hud-tr"></span><span class="hud-bl"></span>
+                    <div class="flex justify-between items-baseline mb-3 pb-2 border-b border-[var(--faint)]">
+                        <div class="text-[11px] font-code text-[var(--dim)] uppercase tracking-[0.18em]">
+                            // 06 DOSSIER // PENYADAP TERTANGKAP
+                        </div>
+                        <span class="text-[10px] font-code text-[var(--dim)]">COUNTER-INTEL DATA</span>
+                    </div>
+                    <div id="tarpit-stat" class="mb-3 px-2.5 py-2 rounded border border-[var(--faint)] text-[11px] font-code text-[var(--dim)]">
+                        TAR-PIT // belum ada penyerang tertahan
+                    </div>
+                    <div id="adversary-list" class="space-y-0 text-xs font-code max-h-80 overflow-y-auto pr-1 flex-1"></div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- SECTION 07: OTORISASI & BUKTI FORENSIK -->
+        <section class="section-divider pt-6">
+            <div class="text-[11px] font-code text-[var(--dim)] uppercase tracking-[0.18em] mb-3 px-1">
+                // 07 OTORISASI &amp; BUKTI FORENSIK
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                <!-- REGISTRI WARRANT -->
+                <div class="glass hud-corners p-5 flex flex-col">
+                    <span class="hud-tr"></span><span class="hud-bl"></span>
+                    <div class="flex justify-between items-baseline mb-3 pb-2 border-b border-[var(--faint)]">
+                        <div class="text-[11px] font-code text-[var(--dim)] uppercase tracking-[0.18em]">// REGISTRI WARRANT (LAYER-3)</div>
+                        <span class="text-[10px] font-code text-[var(--dim)]">DUAL-CONTROL</span>
+                    </div>
+                    <p class="text-[11px] text-[var(--dim)] leading-relaxed mb-2">
+                        Akses ke data VVIP butuh izin tertulis dari pihak yang berbeda dari peminta. Token sah saja tidak cukup.
+                    </p>
+                    <div id="warrant-list" class="space-y-0 text-xs font-code max-h-64 overflow-y-auto pr-1 flex-1">
+                        <p class="text-[var(--dim)] py-3">Belum ada permintaan warrant. Jalankan Tahap 01.</p>
+                    </div>
+                </div>
+
+                <!-- LEDGER FORENSIK -->
+                <div class="glass hud-corners p-5 flex flex-col">
+                    <span class="hud-tr"></span><span class="hud-bl"></span>
+                    <div class="flex justify-between items-baseline mb-3 pb-2 border-b border-[var(--faint)]">
+                        <div class="text-[11px] font-code text-[var(--dim)] uppercase tracking-[0.18em]">// LEDGER FORENSIK (HASH-CHAIN HMAC)</div>
+                        <span id="chain-chip" class="font-code text-[10px] font-semibold tracking-wider px-1.5 py-0.5 rounded border border-[var(--faint)] text-[var(--dim)]">KOSONG</span>
+                    </div>
+                    <div class="text-xs font-code space-y-1">
+                        <div><span class="text-[var(--dim)]">BLOK:</span> <span id="chain-blocks" class="text-[var(--ink)]">0</span></div>
+                        <div class="truncate"><span class="text-[var(--dim)]">HEAD:</span> <span id="chain-head" class="text-[var(--ink)]">-</span></div>
+                    </div>
+                    <div class="flex flex-wrap gap-2 mt-3">
+                        <button onclick="verifyChainNow()" class="px-2.5 py-1 rounded border border-[var(--faint)] hover:border-[var(--safe)] text-[var(--dim)] hover:text-[var(--safe)] transition-all font-code text-[11px] cursor-pointer">Verifikasi Rantai</button>
+                        <button onclick="simulateTamper()" class="px-2.5 py-1 rounded border border-[rgba(244,63,94,0.25)] hover:border-[var(--rose)] text-[var(--dim)] hover:text-[var(--rose)] transition-all font-code text-[11px] cursor-pointer">Simulasi Manipulasi Bukti</button>
+                    </div>
+                    <div id="tamper-out" class="mt-3 text-[11px] font-code text-[var(--dim)] leading-relaxed space-y-1">
+                        Tombol simulasi hanya mengubah salinan di memori; database asli tidak disentuh.
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- SECTION 08: SANDBOX PREVIEW (BINGKAI TERMINAL) -->
+        <section id="sandbox-container" class="hidden section-divider pt-6">
+            <div class="glass hud-corners overflow-hidden">
+                <span class="hud-tr"></span><span class="hud-bl"></span>
+                <div class="flex justify-between items-center px-4 py-2.5 border-b border-[var(--glass-border)] bg-[rgba(20,5,8,0.7)]">
+                    <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-[var(--maroon-600)]"></span>
+                            <span class="w-2.5 h-2.5 rounded-full bg-[var(--rose)]"></span>
+                            <span class="w-2.5 h-2.5 rounded-full bg-[var(--dim)]"></span>
+                        </div>
+                        <span class="font-code text-xs text-[var(--rose-soft)] font-medium tracking-wide ml-2">decoy://sandbox</span>
+                    </div>
+                    <button onclick="document.getElementById('sandbox-container').classList.add('hidden')" class="font-code text-xs text-[var(--dim)] hover:text-[var(--ink)] transition">
+                        [TUTUP SANDBOX]
+                    </button>
+                </div>
+                <iframe id="sandbox-frame" sandbox="allow-scripts allow-same-origin" class="w-full h-64 bg-black border-none block"></iframe>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        gsap.registerPlugin(MotionPathPlugin);
+
+        /* =====================================================================
+           [HELPERS]
+           ===================================================================== */
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        let lastSessionId = null;
+        let lastAnimatedEventKey = null;
+        let currentPacketTl = null;
+        let lastAppliedState = undefined;
+        let currentScoreVal = 0;
+        let lastEventsJson = '';
+        let lastAdversariesJson = '';
+
+        /* =====================================================================
+           [TOPOLOGY LAYOUT]
+           ===================================================================== */
+        function portPoint(el, side, stageRect, vertical) {
+            const r = el.getBoundingClientRect();
+            if (!vertical) {
+                const x = (side === 'right' ? r.right : r.left) - stageRect.left;
+                return { x, y: r.top + r.height / 2 - stageRect.top };
+            }
+            const y = (side === 'bottom' ? r.bottom : r.top) - stageRect.top;
+            return { x: r.left + r.width / 2 - stageRect.left, y };
+        }
+
+        function buildPath(a, b, vertical) {
+            const gap = 10;
+            const s = a;
+            const e = vertical ? { x: b.x, y: b.y - gap } : { x: b.x - gap, y: b.y };
+            const k = Math.max(36, (vertical ? (e.y - s.y) : (e.x - s.x)) * 0.5);
+            return vertical
+                ? `M ${s.x} ${s.y} C ${s.x} ${s.y + k}, ${e.x} ${e.y - k}, ${e.x} ${e.y}`
+                : `M ${s.x} ${s.y} C ${s.x + k} ${s.y}, ${e.x - k} ${e.y}, ${e.x} ${e.y}`;
+        }
+
+        function layoutTopology() {
+            const stage = document.getElementById('topo-stage');
+            const nPenyadap = document.getElementById('node-penyadap');
+            const nL1 = document.getElementById('node-l1');
+            const nL2 = document.getElementById('node-l2');
+            const nL3 = document.getElementById('node-l3');
+            const nL4 = document.getElementById('node-l4');
+            if (!stage || !nPenyadap || !nL1 || !nL2 || !nL3 || !nL4) return;
+
+            const stageRect = stage.getBoundingClientRect();
+            const isVertical = window.innerWidth < 768;
+
+            let pSrcD, pL2D, pL3D, pL4D;
+            if (!isVertical) {
+                const ptSrcOut = portPoint(nPenyadap, 'right', stageRect, false);
+                const ptL1In = portPoint(nL1, 'left', stageRect, false);
+                const ptL1Out = portPoint(nL1, 'right', stageRect, false);
+                const ptL2In = portPoint(nL2, 'left', stageRect, false);
+                const ptL3In = portPoint(nL3, 'left', stageRect, false);
+                const ptL3Out = portPoint(nL3, 'right', stageRect, false);
+                const ptL4In = portPoint(nL4, 'left', stageRect, false);
+
+                pSrcD = buildPath(ptSrcOut, ptL1In, false);
+                pL2D = buildPath(ptL1Out, ptL2In, false);
+                pL3D = buildPath(ptL1Out, ptL3In, false);
+                pL4D = buildPath(ptL3Out, ptL4In, false);
+            } else {
+                const ptSrcOut = portPoint(nPenyadap, 'bottom', stageRect, true);
+                const ptL1In = portPoint(nL1, 'top', stageRect, true);
+                const ptL1Out = portPoint(nL1, 'bottom', stageRect, true);
+                const ptL2In = portPoint(nL2, 'top', stageRect, true);
+                const ptL3In = portPoint(nL3, 'top', stageRect, true);
+                const ptL3Out = portPoint(nL3, 'bottom', stageRect, true);
+                const ptL4In = portPoint(nL4, 'top', stageRect, true);
+
+                pSrcD = buildPath(ptSrcOut, ptL1In, true);
+                pL2D = buildPath(ptL1Out, ptL2In, true);
+                pL3D = buildPath(ptL1Out, ptL3In, true);
+                pL4D = buildPath(ptL3Out, ptL4In, true);
+            }
+
+            ['p-src', 'f-src'].forEach(id => { const el = document.getElementById(id); if (el) el.setAttribute('d', pSrcD); });
+            ['p-l2', 'f-l2'].forEach(id => { const el = document.getElementById(id); if (el) el.setAttribute('d', pL2D); });
+            ['p-l3', 'f-l3'].forEach(id => { const el = document.getElementById(id); if (el) el.setAttribute('d', pL3D); });
+            ['p-l4', 'f-l4'].forEach(id => { const el = document.getElementById(id); if (el) el.setAttribute('d', pL4D); });
+
+            positionLabels(isVertical);
+        }
+
+        function positionLabels(isVertical) {
+            const pairs = [
+                { pathId: 'p-l2', labelId: 'label-p-l2', offsetY: isVertical ? 0 : -16, offsetX: isVertical ? -36 : 0 },
+                { pathId: 'p-l3', labelId: 'label-p-l3', offsetY: isVertical ? 0 : 16, offsetX: isVertical ? 36 : 0 },
+                { pathId: 'p-l4', labelId: 'label-p-l4', offsetY: isVertical ? 0 : -22, offsetX: isVertical ? 36 : 0 }
+            ];
+
+            pairs.forEach(({ pathId, labelId, offsetY, offsetX }) => {
+                const path = document.getElementById(pathId);
+                const label = document.getElementById(labelId);
+                if (!path || !label) return;
+                try {
+                    const totalLen = path.getTotalLength();
+                    if (totalLen > 0) {
+                        const pt = path.getPointAtLength(totalLen / 2);
+                        label.style.left = `${pt.x + offsetX}px`;
+                        label.style.top = `${pt.y + offsetY}px`;
+                    }
+                } catch (e) {
+                    // SVG path not ready
+                }
+            });
+        }
+
+        /* =====================================================================
+           [STATE & HIGHLIGHT]
+           ===================================================================== */
+        function setChip(elId, text, type) {
+            const el = document.getElementById(elId);
+            if (!el) return;
+            el.innerText = text;
+            if (type === 'safe') {
+                el.className = 'font-code text-[10px] font-semibold tracking-wider px-1.5 py-0.5 rounded border border-[var(--safe)] text-[var(--safe)] bg-[rgba(45,212,191,0.12)]';
+            } else if (type === 'alert') {
+                el.className = 'font-code text-[10px] font-semibold tracking-wider px-1.5 py-0.5 rounded border border-[var(--rose)] text-[var(--rose)] bg-[rgba(255,77,109,0.14)]';
+            } else if (type === 'warn') {
+                el.className = 'font-code text-[10px] font-semibold tracking-wider px-1.5 py-0.5 rounded border border-[var(--warn)] text-[var(--warn)] bg-[rgba(251,191,36,0.14)]';
+            } else {
+                el.className = 'font-code text-[10px] font-semibold tracking-wider px-1.5 py-0.5 rounded border border-[var(--faint)] text-[var(--dim)] bg-transparent';
+            }
+        }
+
+        let scoreTween = null;
+        function updateThreatScore(score) {
+            const valEl = document.getElementById('threat-score-val');
+            const labelEl = document.getElementById('threat-score-label');
+            const barEl = document.getElementById('threat-score-bar');
+            const pillEl = document.getElementById('threat-score-pill');
+            if (!valEl || !barEl) return;
+
+            const targetScore = Math.max(0, Math.min(100, parseInt(score) || 0));
+            if (scoreTween) scoreTween.kill();
+
+            if (targetScore === 0) {
+                currentScoreVal = 0;
+                valEl.innerText = '0%';
+                barEl.style.width = '0%';
+            } else {
+                const proxy = { val: currentScoreVal };
+                scoreTween = gsap.to(proxy, {
+                    val: targetScore,
+                    duration: 0.6,
+                    ease: 'power2.out',
+                    onUpdate: () => {
+                        valEl.innerText = `${Math.round(proxy.val)}%`;
+                    }
+                });
+                currentScoreVal = targetScore;
+                barEl.style.width = `${Math.max(2, targetScore)}%`;
+            }
+
+            if (targetScore < 40) {
+                valEl.style.color = 'var(--ink)';
+                barEl.style.background = 'var(--safe)';
+                barEl.style.boxShadow = '0 0 8px rgba(45,212,191,0.5)';
+                if (labelEl) { labelEl.innerText = 'Baseline Normal'; labelEl.style.color = 'var(--dim)'; }
+                if (pillEl) {
+                    pillEl.innerText = 'STATUS // LOW_RISK';
+                    pillEl.className = 'font-code text-[10px] font-semibold px-2 py-0.5 rounded border border-[var(--safe)] text-[var(--safe)] bg-[rgba(45,212,191,0.12)]';
+                }
+            } else if (targetScore < 65) {
+                valEl.style.color = 'var(--warn)';
+                barEl.style.background = 'var(--warn)';
+                barEl.style.boxShadow = '0 0 10px rgba(251,191,36,0.6)';
+                if (labelEl) { labelEl.innerText = 'Pola Mencurigakan'; labelEl.style.color = 'var(--warn)'; }
+                if (pillEl) {
+                    pillEl.innerText = 'STATUS // ELEVATED';
+                    pillEl.className = 'font-code text-[10px] font-semibold px-2 py-0.5 rounded border border-[var(--warn)] text-[var(--warn)] bg-[rgba(251,191,36,0.12)]';
+                }
+            } else {
+                valEl.style.color = 'var(--rose)';
+                barEl.style.background = 'linear-gradient(90deg, #e11d48, #f43f5e, #ff1744)';
+                barEl.style.boxShadow = '0 0 14px rgba(244,63,94,0.85)';
+                if (labelEl) { labelEl.innerText = 'Anomali Terdeteksi!'; labelEl.style.color = 'var(--rose)'; }
+                if (pillEl) {
+                    pillEl.innerText = 'STATUS // THREAT_ALERT';
+                    pillEl.className = 'font-code text-[10px] font-semibold px-2 py-0.5 rounded border border-[var(--rose)] text-[var(--rose)] bg-[rgba(255,77,109,0.14)]';
+                }
+            }
+        }
+
+        function updateStaticHighlight(state) {
+            if (state === lastAppliedState) return;
+            lastAppliedState = state;
+
+            const bannerText = document.getElementById('banner-text');
+            const bannerSub = document.getElementById('banner-sub');
+            const bannerBar = document.getElementById('banner-accent-bar');
+            const topoStatus = document.getElementById('topology-status');
+            const penyadapSub = document.getElementById('penyadap-sub');
+            const penyadapSlash = document.getElementById('penyadap-slash');
+
+            const nodes = {
+                penyadap: document.getElementById('node-penyadap'),
+                l1: document.getElementById('node-l1'),
+                l2: document.getElementById('node-l2'),
+                l3: document.getElementById('node-l3'),
+                l4: document.getElementById('node-l4')
+            };
+
+            const paths = {
+                src: document.getElementById('p-src'),
+                l2: document.getElementById('p-l2'),
+                l3: document.getElementById('p-l3'),
+                l4: document.getElementById('p-l4')
+            };
+
+            const flows = {
+                src: document.getElementById('f-src'),
+                l2: document.getElementById('f-l2'),
+                l3: document.getElementById('f-l3'),
+                l4: document.getElementById('f-l4')
+            };
+
+            const labels = {
+                l2: document.getElementById('label-p-l2'),
+                l3: document.getElementById('label-p-l3'),
+                l4: document.getElementById('label-p-l4')
+            };
+
+            // Reset all nodes
+            Object.values(nodes).forEach(n => {
+                if (n) {
+                    n.classList.remove('topo-node-active-safe', 'topo-node-active-alert', 'topo-node-dim');
+                }
+            });
+
+            // Reset base paths
+            Object.values(paths).forEach(p => {
+                if (p) {
+                    p.setAttribute('stroke', 'rgba(255, 255, 255, 0.12)');
+                    p.setAttribute('stroke-width', '1.5');
+                    p.setAttribute('opacity', '1');
+                    p.setAttribute('marker-end', 'url(#marker-gray)');
+                }
+            });
+
+            // Reset flow paths
+            Object.values(flows).forEach(f => {
+                if (f) {
+                    f.classList.remove('active');
+                    f.style.opacity = '0';
+                }
+            });
+
+            // Reset label pills
+            Object.values(labels).forEach(lbl => {
+                if (lbl) {
+                    lbl.classList.remove('active');
+                    lbl.style.borderColor = 'var(--faint)';
+                    lbl.style.color = 'var(--dim)';
+                }
+            });
+
+            if (state === 'LEGITIMATE') {
+                if (penyadapSub) penyadapSub.innerText = 'Klien VIP Terverifikasi';
+                if (penyadapSlash) penyadapSlash.classList.add('hidden');
+                setChip('penyadap-chip', 'SAH', 'safe');
+                setChip('l1-chip', 'PASS', 'safe');
+                setChip('l2-chip', 'FORWARDED', 'safe');
+                setChip('l3-chip', 'IDLE', 'dim');
+                setChip('l4-chip', 'IDLE', 'dim');
+
+                if (nodes.penyadap) nodes.penyadap.classList.add('topo-node-active-safe');
+                if (nodes.l1) nodes.l1.classList.add('topo-node-active-safe');
+                if (nodes.l2) nodes.l2.classList.add('topo-node-active-safe');
+                if (nodes.l3) nodes.l3.classList.add('topo-node-dim');
+                if (nodes.l4) nodes.l4.classList.add('topo-node-dim');
+
+                if (paths.src) {
+                    paths.src.setAttribute('stroke', 'var(--ink)');
+                    paths.src.setAttribute('marker-end', 'url(#marker-teal)');
+                }
+                if (flows.src) {
+                    flows.src.classList.add('active');
+                    flows.src.setAttribute('stroke', 'var(--ink)');
+                    flows.src.style.opacity = '1';
+                }
+
+                if (paths.l2) {
+                    paths.l2.setAttribute('stroke', 'var(--safe)');
+                    paths.l2.setAttribute('marker-end', 'url(#marker-teal)');
+                }
+                if (flows.l2) {
+                    flows.l2.classList.add('active');
+                    flows.l2.setAttribute('stroke', 'var(--safe)');
+                    flows.l2.style.opacity = '1';
+                }
+                if (labels.l2) {
+                    labels.l2.classList.add('active');
+                    labels.l2.style.borderColor = 'var(--safe)';
+                    labels.l2.style.color = 'var(--safe)';
+                }
+
+                if (bannerText) {
+                    bannerText.innerText = 'Status Sistem: Aman // Trafik VIP Sah Terverifikasi';
+                    bannerText.style.color = 'var(--safe)';
+                }
+                if (bannerSub) {
+                    bannerSub.innerText = 'Token VIP sah & pola interval trafik lulus evaluasi model Isolation Forest. Diteruskan ke Satcom.';
+                }
+                if (bannerBar) {
+                    bannerBar.classList.remove('active');
+                    bannerBar.classList.add('hidden');
+                }
+                if (topoStatus) {
+                    topoStatus.innerText = 'RUTE // SUMBER -> L1 -> L2 [VIP SATCOM]';
+                    topoStatus.style.color = 'var(--safe)';
+                }
+            } else if (state === 'MIRAGE_ENGAGED') {
+                if (penyadapSub) penyadapSub.innerText = 'Rogue Interceptor';
+                if (penyadapSlash) penyadapSlash.classList.remove('hidden');
+                setChip('penyadap-chip', 'ANOMALI', 'alert');
+                setChip('l1-chip', 'FLAGGED', 'alert');
+                setChip('l2-chip', 'SEALED', 'dim');
+                setChip('l3-chip', 'TRAPPED', 'alert');
+                setChip('l4-chip', 'ARMED', 'warn');
+
+                if (nodes.penyadap) nodes.penyadap.classList.add('topo-node-active-alert');
+                if (nodes.l1) nodes.l1.classList.add('topo-node-active-alert');
+                if (nodes.l2) nodes.l2.classList.add('topo-node-dim');
+                if (nodes.l3) nodes.l3.classList.add('topo-node-active-alert');
+                if (nodes.l4) nodes.l4.classList.remove('topo-node-dim');
+
+                if (paths.src) {
+                    paths.src.setAttribute('stroke', 'var(--ink)');
+                    paths.src.setAttribute('marker-end', 'url(#marker-rose)');
+                }
+                if (flows.src) {
+                    flows.src.classList.add('active');
+                    flows.src.setAttribute('stroke', 'var(--ink)');
+                    flows.src.style.opacity = '1';
+                }
+
+                if (paths.l3) {
+                    paths.l3.setAttribute('stroke', 'var(--rose)');
+                    paths.l3.setAttribute('marker-end', 'url(#marker-rose)');
+                }
+                if (flows.l3) {
+                    flows.l3.classList.add('active');
+                    flows.l3.setAttribute('stroke', 'var(--rose)');
+                    flows.l3.style.opacity = '1';
+                }
+                if (labels.l3) {
+                    labels.l3.classList.add('active');
+                    labels.l3.style.borderColor = 'var(--rose)';
+                    labels.l3.style.color = 'var(--rose)';
+                }
+
+                if (bannerText) {
+                    bannerText.innerText = 'Status Sistem: Mirage Engaged // Penyadap Dialihkan ke Decoy';
+                    bannerText.style.color = 'var(--rose)';
+                }
+                if (bannerSub) {
+                    bannerSub.innerText = 'Anomali terdeteksi! Akses server VIP diblokir, penyadap dialihkan ke sandbox honeypot.';
+                }
+                if (bannerBar) {
+                    bannerBar.classList.remove('hidden');
+                    requestAnimationFrame(() => bannerBar.classList.add('active'));
+                }
+                if (topoStatus) {
+                    topoStatus.innerText = 'RUTE // SUMBER -> L1 -> L3 [DECOY SANDBOX]';
+                    topoStatus.style.color = 'var(--rose)';
+                }
+            } else if (state === 'COUNTER_INTEL') {
+                if (penyadapSub) penyadapSub.innerText = 'Rogue Interceptor';
+                if (penyadapSlash) penyadapSlash.classList.remove('hidden');
+                setChip('penyadap-chip', 'TERIDENTIFIKASI', 'alert');
+                setChip('l1-chip', 'FLAGGED', 'alert');
+                setChip('l2-chip', 'SEALED', 'dim');
+                setChip('l3-chip', 'TRAPPED', 'alert');
+                setChip('l4-chip', 'CAPTURED', 'alert');
+
+                if (nodes.penyadap) nodes.penyadap.classList.add('topo-node-active-alert');
+                if (nodes.l1) nodes.l1.classList.add('topo-node-active-alert');
+                if (nodes.l2) nodes.l2.classList.add('topo-node-dim');
+                if (nodes.l3) nodes.l3.classList.add('topo-node-active-alert');
+                if (nodes.l4) nodes.l4.classList.add('topo-node-active-alert');
+
+                if (paths.src) {
+                    paths.src.setAttribute('stroke', 'var(--ink)');
+                    paths.src.setAttribute('opacity', '0.4');
+                }
+                if (paths.l3) {
+                    paths.l3.setAttribute('stroke', 'var(--rose)');
+                    paths.l3.setAttribute('opacity', '0.4');
+                }
+                if (labels.l3) {
+                    labels.l3.style.borderColor = 'rgba(255, 77, 109, 0.4)';
+                    labels.l3.style.color = 'rgba(255, 77, 109, 0.6)';
+                }
+
+                if (paths.l4) {
+                    paths.l4.setAttribute('stroke', 'var(--rose)');
+                    paths.l4.setAttribute('marker-end', 'url(#marker-rose)');
+                }
+                if (flows.l4) {
+                    flows.l4.classList.add('active');
+                    flows.l4.setAttribute('stroke', 'var(--rose)');
+                    flows.l4.style.opacity = '1';
+                }
+                if (labels.l4) {
+                    labels.l4.classList.add('active');
+                    labels.l4.style.borderColor = 'var(--rose)';
+                    labels.l4.style.color = 'var(--rose)';
+                }
+
+                if (bannerText) {
+                    bannerText.innerText = 'Status Sistem: Counter-Intel // Penyadap Tertangkap (Beacon Active)';
+                    bannerText.style.color = 'var(--rose)';
+                }
+                if (bannerSub) {
+                    bannerSub.innerText = 'File umpan dibuka di mesin musuh. Telemetri perangkat penyadap berhasil direkam ke dossier!';
+                }
+                if (bannerBar) {
+                    bannerBar.classList.remove('hidden');
+                    requestAnimationFrame(() => bannerBar.classList.add('active'));
+                }
+                if (topoStatus) {
+                    topoStatus.innerText = 'RUTE // L3 -> L4 [COUNTER-INTEL DOSSIER]';
+                    topoStatus.style.color = 'var(--rose)';
+                }
+            } else {
+                if (penyadapSub) penyadapSub.innerText = 'Menunggu koneksi';
+                if (penyadapSlash) penyadapSlash.classList.add('hidden');
+                setChip('penyadap-chip', 'IDLE', 'dim');
+                setChip('l1-chip', 'IDLE', 'dim');
+                setChip('l2-chip', 'IDLE', 'dim');
+                setChip('l3-chip', 'IDLE', 'dim');
+                setChip('l4-chip', 'IDLE', 'dim');
+
+                if (bannerText) {
+                    bannerText.innerText = 'Sistem Siaga // Standby Menunggu Trafik';
+                    bannerText.style.color = 'var(--ink)';
+                }
+                if (bannerSub) {
+                    bannerSub.innerText = 'Gerbang pengawasan pasif aktif. Menunggu injeksi data atau anomali jaringan.';
+                }
+                if (bannerBar) {
+                    bannerBar.classList.remove('active');
+                    bannerBar.classList.add('hidden');
+                }
+                if (topoStatus) {
+                    topoStatus.innerText = 'RUTE // STANDBY';
+                    topoStatus.style.color = 'var(--dim)';
+                }
+            }
+        }
+
+        /* =====================================================================
+           [ANIMATION]
+           ===================================================================== */
+        function playPacketAnimation(state, score) {
+            if (currentPacketTl) {
+                currentPacketTl.kill();
+            }
+            gsap.killTweensOf('#packet-dot, #packet-trail-1, #packet-trail-2, #packet-trail-3, #node-l1, #node-l2, #node-l3, #node-l4, .l1-scan-bar, .pulse-ring, .l4-crosshair');
+
+            const dot = document.getElementById('packet-dot');
+            const t1 = document.getElementById('packet-trail-1');
+            const t2 = document.getElementById('packet-trail-2');
+            const t3 = document.getElementById('packet-trail-3');
+            if (!dot) return;
+
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                gsap.set([dot, t1, t2, t3], { opacity: 0 });
+                const fallbackScore = ({ STANDBY: 0, LEGITIMATE: 18, MIRAGE_ENGAGED: 88, COUNTER_INTEL: 99 }[state]) || 0;
+                updateThreatScore(score !== undefined ? score : fallbackScore);
+                updateStaticHighlight(state);
+                return;
+            }
+
+            const allPackets = [dot, t1, t2, t3];
+            currentPacketTl = gsap.timeline();
+
+            if (state === 'LEGITIMATE') {
+                currentPacketTl.set(dot, { opacity: 1, fill: 'var(--ink)' });
+                currentPacketTl.set(t1, { opacity: 0.5, fill: 'var(--ink)' });
+                currentPacketTl.set(t2, { opacity: 0.3, fill: 'var(--ink)' });
+                currentPacketTl.set(t3, { opacity: 0.15, fill: 'var(--ink)' });
+
+                // p-src 0.9s (Belum melewati pos: threat tetap di baseline)
+                currentPacketTl.to(dot, { motionPath: { path: '#p-src', align: '#p-src', alignOrigin: [0.5, 0.5] }, duration: 0.9, ease: 'power2.inOut' });
+                currentPacketTl.to(t1, { motionPath: { path: '#p-src', align: '#p-src', alignOrigin: [0.5, 0.5] }, duration: 0.9, ease: 'power2.inOut' }, '<0.04');
+                currentPacketTl.to(t2, { motionPath: { path: '#p-src', align: '#p-src', alignOrigin: [0.5, 0.5] }, duration: 0.9, ease: 'power2.inOut' }, '<0.04');
+                currentPacketTl.to(t3, { motionPath: { path: '#p-src', align: '#p-src', alignOrigin: [0.5, 0.5] }, duration: 0.9, ease: 'power2.inOut' }, '<0.04');
+
+                // JEDA 0.4s di L1: chip L1 "SCANNING", sweep scan
+                currentPacketTl.call(() => {
+                    setChip('l1-chip', 'SCANNING', 'warn');
+                });
+                currentPacketTl.fromTo('#node-l1 .l1-scan-bar',
+                    { top: '0%', opacity: 0.8 },
+                    { top: '100%', opacity: 0, duration: 0.4, ease: 'linear' }
+                );
+
+                // TEPAT DI POS (L1): Nilai threat terukur sah!
+                currentPacketTl.call(() => {
+                    setChip('l1-chip', 'PASS', 'safe');
+                    updateThreatScore(score || 18);
+                    updateStaticHighlight('LEGITIMATE');
+                });
+                currentPacketTl.to(allPackets, { fill: 'var(--safe)', duration: 0.15 });
+
+                // p-l2 1.0s power2.inOut
+                currentPacketTl.to(dot, { motionPath: { path: '#p-l2', align: '#p-l2', alignOrigin: [0.5, 0.5] }, duration: 1.0, ease: 'power2.inOut' });
+                currentPacketTl.to(t1, { motionPath: { path: '#p-l2', align: '#p-l2', alignOrigin: [0.5, 0.5] }, duration: 1.0, ease: 'power2.inOut' }, '<0.04');
+                currentPacketTl.to(t2, { motionPath: { path: '#p-l2', align: '#p-l2', alignOrigin: [0.5, 0.5] }, duration: 1.0, ease: 'power2.inOut' }, '<0.04');
+                currentPacketTl.to(t3, { motionPath: { path: '#p-l2', align: '#p-l2', alignOrigin: [0.5, 0.5] }, duration: 1.0, ease: 'power2.inOut' }, '<0.04');
+
+                // ring pulse di L2 + chip "FORWARDED"
+                currentPacketTl.call(() => {
+                    setChip('l2-chip', 'FORWARDED', 'safe');
+                });
+                currentPacketTl.fromTo('#node-l2 .pulse-ring',
+                    { scale: 1, opacity: 0.6 },
+                    { scale: 1.15, opacity: 0, duration: 0.6, ease: 'power1.out' },
+                    '<'
+                );
+
+                // paket fade out 0.25s
+                currentPacketTl.to(allPackets, { opacity: 0, duration: 0.25 });
+
+            } else if (state === 'MIRAGE_ENGAGED') {
+                currentPacketTl.set(dot, { opacity: 1, fill: 'var(--ink)' });
+                currentPacketTl.set(t1, { opacity: 0.5, fill: 'var(--ink)' });
+                currentPacketTl.set(t2, { opacity: 0.3, fill: 'var(--ink)' });
+                currentPacketTl.set(t3, { opacity: 0.15, fill: 'var(--ink)' });
+
+                // p-src 0.9s: Belum melewati pos pemeriksaan, nilai threat BELUM keluar!
+                currentPacketTl.to(dot, { motionPath: { path: '#p-src', align: '#p-src', alignOrigin: [0.5, 0.5] }, duration: 0.9, ease: 'power2.inOut' });
+                currentPacketTl.to(t1, { motionPath: { path: '#p-src', align: '#p-src', alignOrigin: [0.5, 0.5] }, duration: 0.9, ease: 'power2.inOut' }, '<0.04');
+                currentPacketTl.to(t2, { motionPath: { path: '#p-src', align: '#p-src', alignOrigin: [0.5, 0.5] }, duration: 0.9, ease: 'power2.inOut' }, '<0.04');
+                currentPacketTl.to(t3, { motionPath: { path: '#p-src', align: '#p-src', alignOrigin: [0.5, 0.5] }, duration: 0.9, ease: 'power2.inOut' }, '<0.04');
+
+                // jeda 0.4s scan di L1
+                currentPacketTl.call(() => {
+                    setChip('l1-chip', 'SCANNING', 'warn');
+                });
+                currentPacketTl.fromTo('#node-l1 .l1-scan-bar',
+                    { top: '0%', opacity: 0.8 },
+                    { top: '100%', opacity: 0, duration: 0.4, ease: 'linear' }
+                );
+
+                // TEPAT DI POS (L1): AI mendeteksi anomali! Nilai threat melesat ke atas!
+                currentPacketTl.call(() => {
+                    setChip('l1-chip', 'FLAGGED', 'alert');
+                    updateThreatScore(score || 88);
+                    updateStaticHighlight('MIRAGE_ENGAGED');
+                });
+                currentPacketTl.to(allPackets, { fill: 'var(--rose)', duration: 0.15 });
+
+                // p-l3 1.0s power2.inOut (Dibelokkan ke Decoy Sandbox)
+                currentPacketTl.to(dot, { motionPath: { path: '#p-l3', align: '#p-l3', alignOrigin: [0.5, 0.5] }, duration: 1.0, ease: 'power2.inOut' }, '<');
+                currentPacketTl.to(t1, { motionPath: { path: '#p-l3', align: '#p-l3', alignOrigin: [0.5, 0.5] }, duration: 1.0, ease: 'power2.inOut' }, '<0.04');
+                currentPacketTl.to(t2, { motionPath: { path: '#p-l3', align: '#p-l3', alignOrigin: [0.5, 0.5] }, duration: 1.0, ease: 'power2.inOut' }, '<0.04');
+                currentPacketTl.to(t3, { motionPath: { path: '#p-l3', align: '#p-l3', alignOrigin: [0.5, 0.5] }, duration: 1.0, ease: 'power2.inOut' }, '<0.04');
+
+                // tiba di L3: jitter horizontal +-2px, ring pulse, chip "TRAPPED"
+                currentPacketTl.to('#node-l3', { x: -2, duration: 0.03, yoyo: true, repeat: 3, clearProps: 'x' });
+                currentPacketTl.call(() => {
+                    setChip('l3-chip', 'TRAPPED', 'alert');
+                });
+                currentPacketTl.fromTo('#node-l3 .pulse-ring',
+                    { scale: 1, opacity: 0.6 },
+                    { scale: 1.15, opacity: 0, duration: 0.6, ease: 'power1.out' },
+                    '<'
+                );
+
+                // paket fade out
+                currentPacketTl.to(allPackets, { opacity: 0, duration: 0.25 }, '-=0.3');
+
+            } else if (state === 'COUNTER_INTEL') {
+                currentPacketTl.set(dot, { opacity: 1, fill: 'var(--rose)' });
+                currentPacketTl.set(t1, { opacity: 0.5, fill: 'var(--rose)' });
+                currentPacketTl.set(t2, { opacity: 0.3, fill: 'var(--rose)' });
+                currentPacketTl.set(t3, { opacity: 0.15, fill: 'var(--rose)' });
+
+                // mulai di L3: p-l4 0.9s power2.inOut
+                currentPacketTl.to(dot, { motionPath: { path: '#p-l4', align: '#p-l4', alignOrigin: [0.5, 0.5] }, duration: 0.9, ease: 'power2.inOut' });
+                currentPacketTl.to(t1, { motionPath: { path: '#p-l4', align: '#p-l4', alignOrigin: [0.5, 0.5] }, duration: 0.9, ease: 'power2.inOut' }, '<0.04');
+                currentPacketTl.to(t2, { motionPath: { path: '#p-l4', align: '#p-l4', alignOrigin: [0.5, 0.5] }, duration: 0.9, ease: 'power2.inOut' }, '<0.04');
+                currentPacketTl.to(t3, { motionPath: { path: '#p-l4', align: '#p-l4', alignOrigin: [0.5, 0.5] }, duration: 0.9, ease: 'power2.inOut' }, '<0.04');
+
+                // tiba di L4: ikon crosshair berputar 90deg, chip "CAPTURED", ring pulse
+                currentPacketTl.to('#node-l4 .l4-crosshair', { rotation: '+=90', duration: 0.4, ease: 'power2.out' });
+                currentPacketTl.call(() => {
+                    setChip('l4-chip', 'CAPTURED', 'alert');
+                    updateThreatScore(score || 99);
+                    updateStaticHighlight('COUNTER_INTEL');
+                });
+                currentPacketTl.fromTo('#node-l4 .pulse-ring',
+                    { scale: 1, opacity: 0.6 },
+                    { scale: 1.15, opacity: 0, duration: 0.6, ease: 'power1.out' },
+                    '<'
+                );
+
+                // fade out
+                currentPacketTl.to(allPackets, { opacity: 0, duration: 0.25 }, '-=0.2');
+            }
+        }
+
+        /* =====================================================================
+           [RENDER LOG & DOSSIER]
+           ===================================================================== */
+        function renderTarpit(t) {
+            const el = document.getElementById('tarpit-stat');
+            if (!el || !t) return;
+            const secs = Number(t.seconds_wasted || 0);
+            const mm = Math.floor(secs / 60), ss = Math.floor(secs % 60);
+            const waktu = mm > 0 ? `${mm} mnt ${ss} dtk` : `${ss} dtk`;
+            if (!t.requests) {
+                el.className = 'mb-3 px-2.5 py-2 rounded border border-[var(--faint)] text-[11px] font-code text-[var(--dim)]';
+                el.textContent = 'TAR-PIT // belum ada penyerang tertahan';
+                return;
+            }
+            const hot = t.active > 0;
+            el.className = 'mb-3 px-2.5 py-2 rounded border text-[11px] font-code ' +
+                (hot ? 'border-[var(--rose)] text-[var(--rose)] bg-[rgba(255,77,109,0.14)]' : 'border-[var(--faint)] text-[var(--ink)]');
+            el.textContent = `TAR-PIT // tertahan sekarang: ${t.active} | waktu penyerang terbuang: ${waktu} | permintaan: ${t.requests}`;
+        }
+
+        function renderLogs(events) {
+            const listEl = document.getElementById('event-list');
+            if (!listEl) return;
+            const jsonStr = JSON.stringify(events || []);
+            if (jsonStr === lastEventsJson) return;
+            lastEventsJson = jsonStr;
+
+            const savedScroll = listEl.scrollTop;
+
+            if (!events || events.length === 0) {
+                listEl.innerHTML = '<p class="text-[var(--dim)] py-3">Menunggu trafik masuk...</p>';
+                return;
+            }
+
+            const html = events.map(e => {
+                const isLegit = e.type === 'LEGITIMATE';
+                const isCounter = e.type === 'COUNTER_INTEL';
+                const isInsiderAbuse = e.incident_type === 'INSIDER_ABUSE_SUSPECTED';
+                let chipClass = isLegit 
+                    ? 'border-[var(--safe)] text-[var(--safe)] bg-[rgba(45,212,191,0.12)]' 
+                    : isCounter 
+                        ? 'border-[var(--rose)] text-[var(--rose)] bg-[rgba(255,77,109,0.22)] shadow-[0_0_8px_rgba(255,77,109,0.3)]'
+                        : 'border-[var(--rose)] text-[var(--rose)] bg-[rgba(255,77,109,0.14)]';
+
+                // Badge kedua khusus event MIRAGE_ENGAGED: bedakan penyusup eksternal
+                // (tidak punya akses sah sama sekali) dari penyalahgunaan akses oleh
+                // pihak yang SAH tapi tanpa otorisasi/warrant -- insider abuse.
+                let incidentBadge = '';
+                if (e.incident_type) {
+                    const incidentClass = isInsiderAbuse
+                        ? 'border-[var(--warn)] text-[var(--warn)] bg-[rgba(251,191,36,0.14)]'
+                        : 'border-[var(--rose)] text-[var(--rose)] bg-[rgba(255,77,109,0.14)]';
+                    const incidentLabel = isInsiderAbuse ? 'INSIDER ABUSE' : 'PENYUSUP EKSTERNAL';
+                    incidentBadge = `<span class="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded border ${incidentClass}">${incidentLabel}</span>`;
+                }
+
+                return `<div class="py-2.5 border-b border-[var(--faint)] flex flex-col gap-1 transition-opacity duration-200">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="text-[10px] text-[var(--dim)]">[${escapeHtml(e.time)}]</span>
+                        <span class="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded border ${chipClass}">${escapeHtml(e.type)}</span>
+                        ${incidentBadge}
+                        <span class="text-[10px] text-[var(--dim)] ml-auto">SKOR: ${escapeHtml(e.score)}%</span>
+                    </div>
+                    <div class="text-xs text-[var(--ink)] leading-relaxed">${escapeHtml(e.detail)}</div>
+                </div>`;
+            }).join('');
+
+            listEl.innerHTML = html;
+            listEl.scrollTop = savedScroll;
+        }
+
+        function renderAdversaries(adversaries) {
+            const listEl = document.getElementById('adversary-list');
+            if (!listEl) return;
+            const jsonStr = JSON.stringify(adversaries || []);
+            if (jsonStr === lastAdversariesJson) return;
+            lastAdversariesJson = jsonStr;
+
+            const savedScroll = listEl.scrollTop;
+
+            if (!adversaries || adversaries.length === 0) {
+                listEl.innerHTML = '<p class="text-[var(--dim)] py-3">Belum ada penyadap yang memicu beacon.</p>';
+                return;
+            }
+
+            const html = adversaries.map(a => `
+                <div class="py-3 border-b border-[var(--faint)] space-y-1.5 transition-opacity duration-200">
+                    <div class="flex items-center justify-between">
+                        <div class="font-display text-sm font-bold text-[var(--rose)] tracking-wider">
+                            TARGET // ${escapeHtml(a.session_id)}
+                        </div>
+                        <span class="font-code text-[10px] px-1.5 py-0.5 rounded border border-[var(--rose)] text-[var(--rose)] bg-[rgba(255,77,109,0.14)] uppercase font-semibold">
+                            ${escapeHtml(a.channel)}
+                        </span>
+                    </div>
+                    <div class="text-xs text-[var(--ink)] flex flex-wrap gap-x-2">
+                        <span><span class="text-[var(--dim)]">IP:</span> ${escapeHtml(a.attacker_ip)}</span>
+                        <span class="text-[var(--dim)]">/</span>
+                        <span><span class="text-[var(--dim)]">TZ:</span> ${escapeHtml(a.timezone)}</span>
+                        <span class="text-[var(--dim)]">/</span>
+                        <span><span class="text-[var(--dim)]">RES:</span> ${escapeHtml(a.screen_res)}</span>
+                    </div>
+                    <div class="text-[11px] text-[var(--ink)] flex flex-wrap gap-x-2">
+                        <span><span class="text-[var(--dim)]">NET:</span> ${escapeHtml(a.network_type || '-')}</span>
+                        <span class="text-[var(--dim)]">/</span>
+                        <span><span class="text-[var(--dim)]">ISP:</span> ${escapeHtml(a.isp || '-')}</span>
+                        <span class="text-[var(--dim)]">/</span>
+                        <span><span class="text-[var(--dim)]">ASN:</span> ${escapeHtml(a.asn || '-')}</span>
+                    </div>
+                    <div class="text-[11px] text-[var(--ink)]">
+                        <span class="text-[var(--dim)]">KEYAKINAN:</span> ${escapeHtml(a.confidence || '-')}
+                    </div>
+                    <div class="truncate text-[11px] text-[var(--dim)]" title="${escapeHtml(a.user_agent)}">
+                        UA // ${escapeHtml(a.user_agent)}
+                    </div>
+                    <div class="text-[10px] text-[var(--dim)] truncate" title="Hash blok ledger forensik">
+                        HASH // ${escapeHtml(a.forensic_hash || '-')}
+                    </div>
+                    <div class="text-[10px] text-[var(--rose-soft)]">
+                        TERPICU // ${escapeHtml(a.timestamp)}
+                    </div>
+                </div>
+            `).join('');
+
+            listEl.innerHTML = html;
+            listEl.scrollTop = savedScroll;
+        }
+
+        /* =====================================================================
+           [SIMULATION]
+           ===================================================================== */
+        const MIRAGE_ADMIN_KEY = {{ admin_key|tojson }};
+        const SIM_DEVICE = 'VIP-HANDSET-01';
+        const ADMIN_HDR = { 'X-Admin-Key': MIRAGE_ADMIN_KEY };
+
+        function setSimStatus(msg) {
+            const statusEl = document.getElementById('sim-status');
+            if (statusEl) statusEl.innerText = msg;
+        }
+
+        async function postJson(url, headers) {
+            const r = await fetch(url, { method: 'POST', headers: headers || ADMIN_HDR });
+            if (!r.ok) throw new Error(url + ' -> HTTP ' + r.status);
+            return r.json();
+        }
+
+        // Jalur resmi: ajukan warrant -> disetujui pihak LAIN -> JWT berumur pendek -> akses.
+        async function issueAuthorizedCredentials() {
+            const req = await postJson('/api/warrant/request?device_id=' + SIM_DEVICE + '&requested_by=Operator-A&purpose=Pengamanan%20VVIP');
+            const ok = await postJson('/api/warrant/approve?request_id=' + encodeURIComponent(req.request_id) + '&decided_by=Komandan-B&ttl_minutes=5');
+            if (!ok.warrant) throw new Error('Warrant ditolak: ' + (ok.reason || ok.status));
+            const tok = await postJson('/api/auth/issue-token?device_id=' + SIM_DEVICE + '&ttl=60');
+            return { warrantId: ok.warrant.warrant_id, token: tok.token };
+        }
+
+        function markSession(res) {
+            lastSessionId = res.headers.get('X-Mirage-Session');
+            const legSess = document.getElementById('legend-session-id');
+            if (legSess) legSess.innerText = lastSessionId || '--';
+        }
+
+        async function simLegit() {
+            try {
+                setSimStatus('Mengajukan warrant, menunggu persetujuan pihak independen...');
+                const cred = await issueAuthorizedCredentials();
+                const res = await fetch('/gateway/vip-stream', {
+                    headers: {
+                        'x-vip-token': cred.token,
+                        'x-device-id': SIM_DEVICE,
+                        'x-warrant-id': cred.warrantId
+                    }
+                });
+                if (res.headers.get('X-Mirage-Session')) {
+                    markSession(res);
+                    setSimStatus('Tak terduga: akses sah dialihkan ke decoy (' + res.headers.get('X-Mirage-Incident') + ').');
+                } else {
+                    const data = await res.json();
+                    setSimStatus('Hasil VIP Sah [' + cred.warrantId + ']: ' + (data.message || 'Trafik diterima oleh Satcom.'));
+                }
+                await refreshState();
+                if (typeof amapPlayScene1 === 'function') { amapPlayScene1(true); }
+            } catch (err) {
+                console.error('Error in simLegit:', err);
+                setSimStatus('Tahap 01 gagal: ' + err.message);
+            }
+        }
+
+        async function simTokenLeakBot() {
+            try {
+                // Token sah (bocor) + warrant sah, tetapi dipakai bot dengan pola burst.
+                const cred = await issueAuthorizedCredentials();
+                const res = await fetch('/gateway/vip-stream', {
+                    headers: {
+                        'x-vip-token': cred.token,
+                        'x-device-id': SIM_DEVICE,
+                        'x-warrant-id': cred.warrantId,
+                        'X-Simulated-Burst': '1'
+                    }
+                });
+                markSession(res);
+                setSimStatus('Token sah dipakai bot anomali! AI Layer-2 menangkapnya (' + res.headers.get('X-Mirage-Incident') + ') & membelokkan ke Decoy [' + lastSessionId + '].');
+                await refreshState();
+                if (typeof amapPlayScene2 === 'function') { amapEnsureStageVisible(); amapPlayScene2(true); }
+            } catch (err) {
+                console.error('Error in simTokenLeakBot:', err);
+                setSimStatus('Tahap 02A gagal: ' + err.message);
+            }
+        }
+
+        async function simInsider() {
+            try {
+                // Token sah, perilaku normal, TAPI tanpa warrant: akses oleh pihak berwenang tanpa izin.
+                const tok = await postJson('/api/auth/issue-token?device_id=' + SIM_DEVICE + '&ttl=60');
+                const res = await fetch('/gateway/vip-stream', {
+                    headers: { 'x-vip-token': tok.token, 'x-device-id': SIM_DEVICE }
+                });
+                markSession(res);
+                setSimStatus('Akses oleh pihak berwenang TANPA warrant: ' + res.headers.get('X-Mirage-Incident') + '. Auth & AI lolos, otorisasi ditolak -> Decoy [' + lastSessionId + '].');
+                await refreshState();
+                if (typeof amapPlayScene2 === 'function') { amapEnsureStageVisible(); amapPlayScene2(true); }
+            } catch (err) {
+                console.error('Error in simInsider:', err);
+                setSimStatus('Tahap 02C gagal: ' + err.message);
+            }
+        }
+
+        async function simAttack() {
+            try {
+                const res = await fetch('/gateway/vip-stream', {
+                    headers: { 'X-Simulated-Sniffer': 'Rogue-SS7-SIP-Interceptor/2.1' }
+                });
+                lastSessionId = res.headers.get('X-Mirage-Session');
+                const legSess = document.getElementById('legend-session-id');
+                if (legSess) legSess.innerText = lastSessionId || '--';
+
+                const statusEl = document.getElementById('sim-status');
+                if (statusEl) {
+                    statusEl.innerText = `Penyadap menyusup! Dialihkan ke Decoy Session [${lastSessionId}]. Jalankan tahap 03 untuk memicu beacon telemetri.`;
+                }
+                await refreshState();
+                if (typeof amapPlayScene2 === 'function') { amapEnsureStageVisible(); amapPlayScene2(true); }
+            } catch (err) {
+                console.error('Error in simAttack:', err);
+            }
+        }
+
+
+        /* TAHAP 04: penyerang memakai kredensial umpan lalu tertahan di tar-pit. Semua dijalankan dari
+           halaman ini terhadap server sendiri (simulasi); tidak ada kode yang menyentuh pihak lain. */
+        let tpAbort = null, tpTimer = null;
+
+        function tpLog(line) {
+            const t = document.getElementById('tarpit-term');
+            if (!t) return;
+            t.textContent += line + '\n';
+            t.scrollTop = t.scrollHeight;
+        }
+
+        function stopTarpitDemo() {
+            if (tpAbort) { tpAbort.abort(); }
+        }
+
+        async function simHoneytoken() {
+            if (tpAbort) { tpAbort.abort(); await new Promise(r => setTimeout(r, 300)); }
+            const wrap = document.getElementById('tarpit-term-wrap');
+            const term = document.getElementById('tarpit-term');
+            const timerEl = document.getElementById('tarpit-timer');
+            if (wrap) wrap.classList.remove('hidden');
+            if (term) term.textContent = '';
+            if (timerEl) timerEl.innerText = '0 dtk';
+            try {
+                setSimStatus('Penyerang menyadap lalu lintas VIP dan mendapat dokumen umpan...');
+                tpLog('[penyerang] mencegat lalu lintas VIP tanpa token...');
+                const res = await fetch('/gateway/vip-stream?format=html', { headers: { 'X-Simulated-Sniffer': 'Rogue-SS7-SIP-Interceptor/2.1' } });
+                markSession(res);
+                const html = await res.text();
+                const u = html.match(/Pengguna<\/td><td>: (\S+?)<\/td>/);
+                const pw = html.match(/Kata sandi<\/td><td>: (\S+?)<\/td>/);
+                if (!u || !pw) throw new Error('kredensial tidak ditemukan di dokumen umpan');
+                tpLog('[penyerang] dokumen terbaca. Akun portal ditemukan:');
+                tpLog('            pengguna  : ' + u[1]);
+                tpLog('            kata sandi: ' + pw[1]);
+                await refreshState();
+                // Skor gauge & adegan radar mengikuti event nyata (tanpa menggulir halaman: terminal tetap terlihat).
+                if (typeof amapPlayScene2 === 'function') { amapPlayScene2(true); }
+
+                tpLog('[penyerang] mencoba login ke portal koordinasi...');
+                const lg = await fetch('/portal/login', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: u[1], password: pw[1] })
+                });
+                if (!lg.ok) throw new Error('login portal gagal: HTTP ' + lg.status);
+                const tok = (await lg.json()).token;
+                tpLog('[server]    200 OK: sesi koordinasi dibuka');
+                setSimStatus('Kredensial umpan dipakai! Honeytoken tercatat (keyakinan TINGGI). Penyerang kini dibawa ke tar-pit...');
+                await refreshState();
+                for (let k = 0; k < 30 && !window.amapScene2Completed; k++) await new Promise(r => setTimeout(r, 200));
+                if (window.amapScene2Completed && typeof amapPlayScene3 === 'function') { amapPlayScene3(true); }
+
+                tpLog('[penyerang] memindai direktori dengan skrip otomatis...');
+                const H = { 'Authorization': 'Bearer ' + tok };
+                // Pola menjelajah cepat beruntun: server menilai perilaku ini sebagai skrip (mode adaptif).
+                for (let i = 0; i < 3; i++) {
+                    const c = new AbortController();
+                    const r = await fetch('/portal/files/pindai' + i + '/', { headers: H, signal: c.signal });
+                    await r.body.getReader().read();
+                    c.abort();
+                }
+
+                tpAbort = new AbortController();
+                const t0 = Date.now();
+                tpTimer = setInterval(() => { if (timerEl) timerEl.innerText = Math.floor((Date.now() - t0) / 1000) + ' dtk'; }, 500);
+                const auto = setTimeout(() => stopTarpitDemo(), 90000);
+                setSimStatus('Tar-pit aktif: respons penyerang dikirim sangat lambat. Tekan "PENYERANG MENYERAH" untuk menghentikan.');
+                tpLog('[server]    (respons mulai mengalir lambat...)');
+                try {
+                    const r = await fetch('/portal/files', { headers: H, signal: tpAbort.signal });
+                    const reader = r.body.getReader();
+                    const dec = new TextDecoder();
+                    let buf = '', rows = 0;
+                    while (true) {
+                        const { value, done } = await reader.read();
+                        if (done) break;
+                        buf += dec.decode(value, { stream: true });
+                        const m = buf.match(/>([^<>]+)<\/a>/g) || [];
+                        while (rows < m.length) { tpLog('  ' + m[rows].replace(/^>|<\/a>$/g, '')); rows++; }
+                    }
+                    tpLog('[server]    halaman selesai.');
+                } catch (e) {
+                    if (e.name !== 'AbortError') throw e;
+                } finally {
+                    clearTimeout(auto);
+                }
+                const secs = Math.floor((Date.now() - t0) / 1000);
+                tpLog('[penyerang] menyerah setelah ' + secs + ' dtk, tanpa hasil nyata.');
+                setSimStatus('Penyerang menyerah setelah tertahan ' + secs + ' dtk. Waktu terbuang & bukti tercatat di panel Tar-Pit dan ledger forensik.');
+            } catch (err) {
+                console.error('Error in simHoneytoken:', err);
+                setSimStatus('Tahap 04 gagal: ' + err.message);
+            } finally {
+                if (tpTimer) { clearInterval(tpTimer); tpTimer = null; }
+                tpAbort = null;
+                await refreshState();
+            }
+        }
+
+        async function openSandbox() {
+            const statusEl = document.getElementById('sim-status');
+            if (!lastSessionId) {
+                if (statusEl) {
+                    statusEl.innerText = 'Peringatan: Jalankan tahap 02 (Simulasi Penyadap) terlebih dahulu untuk membuat sesi umpan!';
+                }
+                return;
+            }
+            if (typeof amapPlayScene3 === 'function') {
+                amapEnsureStageVisible();
+                amapPlayScene3(true);
+            }
+            const container = document.getElementById('sandbox-container');
+            const frame = document.getElementById('sandbox-frame');
+            if (container) container.classList.remove('hidden');
+            if (frame) frame.src = '/sandbox/open/' + lastSessionId;
+
+            const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Jakarta';
+            const res = window.screen.width + 'x' + window.screen.height;
+            try {
+                await fetch(`/api/telemetry/${lastSessionId}?channel=sandbox_telemetry&tz=${encodeURIComponent(tz)}&res=${res}`);
+                if (statusEl) {
+                    statusEl.innerText = 'File sadapan dibuka di mesin penyadap! Beacon aktif merekam profil perangkat target.';
+                }
+                await refreshState();
+            } catch (err) {
+                console.error('Error in openSandbox:', err);
+            }
+        }
+
+
+        async function resetSystemLogs() {
+            try {
+                const res = await fetch('/api/reset', {
+                    method: 'POST',
+                    headers: { 'X-Admin-Key': MIRAGE_ADMIN_KEY }
+                });
+                const data = await res.json();
+                
+                lastSessionId = null;
+                lastEventsJson = '';
+                lastAdversariesJson = '';
+                lastAnimatedEventKey = '';
+
+                // Sembunyikan sandbox preview jika terbuka
+                const sandboxBox = document.getElementById('sandbox-container');
+                if (sandboxBox) sandboxBox.classList.add('hidden');
+
+                // Reset Status Banner
+                const bannerText = document.getElementById('banner-text');
+                const bannerSub = document.getElementById('banner-sub');
+                const bannerBar = document.getElementById('banner-accent-bar');
+                if (bannerText) bannerText.innerText = 'SISTEM SIAGA // STANDBY MENUNGGU TRAFIK';
+                if (bannerSub) bannerSub.innerText = 'Gerbang pengawasan pasif aktif. Menunggu injeksi data atau anomali jaringan.';
+                if (bannerBar) bannerBar.classList.add('hidden');
+
+                // Reset Terminal Prompt Status
+                const statusEl = document.getElementById('sim-status');
+                if (statusEl) {
+                    statusEl.innerText = 'Log audit & riwayat penyadap telah dibersihkan. Sistem siap untuk pengujian baru.';
+                }
+
+                // Reset Radar Stage baseline counter jika fungsi radar aktif
+                if (typeof amapInitialAttempts !== 'undefined') {
+                    amapInitialAttempts = 0;
+                    amapInitialAdversaries = 0;
+                    amapScene2Completed = false;
+                    window.amapScene2Completed = false;
+                }
+                const elAtt = document.getElementById('map-stat-attempts');
+                const elAdv = document.getElementById('map-stat-adversaries');
+                if (elAtt) elAtt.textContent = '0';
+                if (elAdv) elAdv.textContent = '0';
+                if (typeof amapPlayScene1 === 'function') {
+                    amapPlayScene1(false);
+                }
+                updateThreatScore(0);
+                updateStaticHighlight(null);
+
+                // Refresh UI agar tabel log & adversary list kosong seketika
+                await refreshState();
+            } catch (err) {
+                console.error('Error in resetSystemLogs:', err);
+            }
+        }
+
+        function setChainChip(el, text, color) {
+            if (!el) return;
+            el.textContent = text;
+            el.style.color = color;
+            el.style.borderColor = color;
+        }
+
+        function renderForensics(chain, warrants) {
+            const list = document.getElementById('warrant-list');
+            if (list) {
+                if (!warrants || warrants.length === 0) {
+                    list.innerHTML = '<p class="text-[var(--dim)] py-3">Belum ada permintaan warrant. Jalankan Tahap 01.</p>';
+                } else {
+                    const colors = { APPROVED: 'var(--safe)', PENDING: 'var(--warn)', REJECTED: 'var(--rose)', EXPIRED: 'var(--dim)' };
+                    list.innerHTML = warrants.map(w => {
+                        const col = colors[w.status] || 'var(--dim)';
+                        const who = w.decided_by
+                            ? escapeHtml(w.requested_by) + ' &rarr; ' + escapeHtml(w.decided_by)
+                            : escapeHtml(w.requested_by) + ' &rarr; menunggu';
+                        return `<div class="py-2 border-b border-[var(--faint)] space-y-0.5">
+                            <div class="flex items-center justify-between">
+                                <span class="text-[var(--ink)]">${escapeHtml(w.warrant_id || w.request_id)}</span>
+                                <span class="text-[10px] px-1.5 py-0.5 rounded border font-semibold" style="color:${col};border-color:${col}">${escapeHtml(w.status)}</span>
+                            </div>
+                            <div class="text-[11px] text-[var(--dim)]">${who} // ${escapeHtml(w.device_id)}</div>
+                            ${w.status === 'REJECTED' && w.decision_note ? `<div class="text-[10px] text-[var(--rose-soft)]">${escapeHtml(w.decision_note)}</div>` : ''}
+                        </div>`;
+                    }).join('');
+                }
+            }
+            renderChainStatus(chain);
+        }
+
+        function renderChainStatus(chain) {
+            const chip = document.getElementById('chain-chip');
+            const blocks = document.getElementById('chain-blocks');
+            const head = document.getElementById('chain-head');
+            if (!chain) return;
+            if (chain.valid) {
+                const n = chain.total_blocks || 0;
+                setChainChip(chip, n === 0 ? 'KOSONG' : 'TERVERIFIKASI \u2713', n === 0 ? 'var(--dim)' : 'var(--safe)');
+                if (blocks) blocks.textContent = n;
+                if (head) head.textContent = n === 0 ? '-' : String(chain.head_hash).slice(0, 24) + '...';
+            } else {
+                setChainChip(chip, 'RANTAI RUSAK \u2717', 'var(--rose)');
+                if (blocks) blocks.textContent = 'blok #' + chain.corrupted_id + ' bermasalah';
+                if (head) head.textContent = chain.reason || '-';
+            }
+        }
+
+        async function verifyChainNow() {
+            const out = document.getElementById('tamper-out');
+            try {
+                const r = await fetch('/api/forensics/verify-chain', { headers: { 'X-Admin-Key': MIRAGE_ADMIN_KEY } });
+                const d = await r.json();
+                renderChainStatus(d);
+                if (out) out.textContent = d.valid ? 'Verifikasi ulang: seluruh rantai utuh.' : 'Verifikasi ulang: ' + d.reason;
+            } catch (e) { if (out) out.textContent = 'Verifikasi gagal: ' + e.message; }
+        }
+
+        async function simulateTamper() {
+            const out = document.getElementById('tamper-out');
+            try {
+                const r = await fetch('/api/forensics/simulate-tamper', { method: 'POST', headers: { 'X-Admin-Key': MIRAGE_ADMIN_KEY } });
+                const d = await r.json();
+                if (!out) return;
+                if (d.error) { out.textContent = d.error; return; }
+                const line = (label, res) => `<div>${label}: <span style="color:${res.valid ? 'var(--warn)' : 'var(--safe)'}">${res.valid ? 'LOLOS (berbahaya)' : 'TERDETEKSI \u2713'}</span></div>`;
+                out.innerHTML =
+                    `<div class="text-[var(--ink)]">Blok #${escapeHtml(d.block_id)} dimanipulasi di salinan memori:</div>` +
+                    line('1. Isi diubah (IP penyadap diganti)', d.edited_payload) +
+                    line('2. Isi diubah + hash dihitung ulang tanpa kunci', d.edited_and_rehashed_without_key);
+            } catch (e) { if (out) out.textContent = 'Simulasi gagal: ' + e.message; }
+        }
+
+        async function refreshState() {
+            try {
+                const res = await fetch('/api/state', {
+                    headers: { 'X-Admin-Key': MIRAGE_ADMIN_KEY }
+                });
+                const data = await res.json();
+
+                renderLogs(data.events);
+                renderAdversaries(data.adversaries);
+                renderTarpit(data.tarpit);
+                renderForensics(data.forensic_chain, data.warrants);
+
+                if (data.events && data.events.length > 0) {
+                    amapFocusEvent = data.events[0];
+                }
+                if (data.adversaries && data.adversaries.length > 0) {
+                    amapFocusSession = data.adversaries[0];
+                }
+
+                if (data.events && data.events.length > 0) {
+                    const latest = data.events[0];
+                    const eventKey = `${latest.time}_${latest.type}_${latest.score}_${latest.detail}`;
+
+                    if (eventKey !== lastAnimatedEventKey) {
+                        lastAnimatedEventKey = eventKey;
+                        // Event baru dari simulasi: serahkan update nilai threat ke titik pos pemeriksaan pada animasi!
+                        playPacketAnimation(latest.type, latest.score);
+                    } else if (!amapCurrentTimeline && !currentPacketTl) {
+                        // Polling berkala atau statis: sinkronkan jika tidak sedang animasi alur
+                        updateThreatScore(latest.score);
+                        updateStaticHighlight(latest.type);
+                    }
+                } else {
+                    updateThreatScore(0);
+                    updateStaticHighlight(null);
+                }
+            } catch (err) {
+                console.error('Error refreshing state:', err);
+            }
+        }
+
+        /* =====================================================================
+           [BOOT & PREVIEW]
+           ===================================================================== */
+        window.__previewState = (s) => {
+            const sc = { STANDBY: 0, LEGITIMATE: 18, MIRAGE_ENGAGED: 88, COUNTER_INTEL: 99 }[s] ?? 0;
+            playPacketAnimation(s, sc);
+        };
+
+        if (window.ResizeObserver) {
+            const ro = new ResizeObserver(() => {
+                layoutTopology();
+            });
+            const stage = document.getElementById('topo-stage');
+            if (stage) ro.observe(stage);
+        }
+
+        window.addEventListener('resize', layoutTopology);
+
+        if (document.fonts) {
+            document.fonts.ready.then(() => {
+                layoutTopology();
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            layoutTopology();
+        });
+
+        // Initial setup and recurring poll (2000ms)
+        layoutTopology();
+        refreshState();
+        setInterval(refreshState, 2000);
+    </script>
+
+                                <!-- ATTACK-MAP:START -->
+    <script>
+        /* =====================================================================
+           [HELPERS & TIMEZONE DATA]
+           ===================================================================== */
+        function escapeAmap(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function amapIsReducedMotion() {
+            return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        }
+
+        const AMAP_TIMEZONE_LABELS = {
+            'Asia/Jakarta': 'Jakarta, Indonesia',
+            'Asia/Pontianak': 'Pontianak, Indonesia',
+            'Asia/Makassar': 'Makassar, Indonesia',
+            'Asia/Jayapura': 'Jayapura, Indonesia',
+            'Asia/Shanghai': 'Shanghai, Tiongkok',
+            'Asia/Tokyo': 'Tokyo, Jepang',
+            'Asia/Singapore': 'Singapura',
+            'Europe/Moscow': 'Moskow, Rusia',
+            'Europe/Berlin': 'Berlin, Jerman',
+            'Europe/London': 'London, Inggris',
+            'America/New_York': 'New York, AS',
+            'Australia/Sydney': 'Sydney, Australia'
+        };
+
+        /* =====================================================================
+           [GLOBAL RADAR STATE]
+           ===================================================================== */
+        var amapInitialAttempts = null;
+        var amapInitialAdversaries = null;
+        var amapCurrentScene = 1;
+        var amapScene2Completed = false;
+        window.amapScene2Completed = false;
+        var amapCurrentTimeline = null;
+        window.amapCurrentTimeline = null;
+        var amapFocusSession = null;
+        var amapFocusEvent = null;
+
+        /* =====================================================================
+           [UI CONTROLLERS]
+           ===================================================================== */
+        function amapSetSentence(text) {
+            var el = document.getElementById('map-stage-sentence');
+            if (!el) return;
+            if (window.gsap && !amapIsReducedMotion()) {
+                gsap.to(el, {
+                    opacity: 0,
+                    duration: 0.15,
+                    onComplete: function() {
+                        el.textContent = text;
+                        gsap.to(el, { opacity: 1, duration: 0.25 });
+                    }
+                });
+            } else {
+                el.textContent = text;
+            }
+        }
+
+        function amapSetStepper(activeStep, isWaitingAll) {
+            for (var i = 1; i <= 3; i++) {
+                var card = document.getElementById('map-step-' + i);
+                if (!card) continue;
+                var badge = card.querySelector('.amap-step-badge');
+                var num = card.querySelector('.amap-step-num');
+
+                card.classList.remove('is-waiting', 'is-active', 'active', 'is-done');
+
+                if (isWaitingAll) {
+                    card.classList.add('is-waiting');
+                    if (badge) badge.classList.add('hidden');
+                    if (num) {
+                        num.className = 'amap-step-num w-8 h-8 rounded-full bg-white/5 border border-white/20 flex items-center justify-center font-bold text-xs text-[var(--ink)] shrink-0 font-sans';
+                        num.textContent = i;
+                    }
+                } else if (i < activeStep) {
+                    card.classList.add('is-done');
+                    if (badge) badge.classList.add('hidden');
+                    if (num) {
+                        num.className = 'amap-step-num w-8 h-8 rounded-full bg-[rgba(45,212,191,0.2)] border border-[#2dd4bf] flex items-center justify-center font-bold text-xs text-[#2dd4bf] shrink-0 font-sans';
+                        num.innerHTML = '&#10003;';
+                    }
+                } else if (i === activeStep) {
+                    card.classList.add('is-active', 'active');
+                    if (badge) badge.classList.remove('hidden');
+                    if (num) {
+                        var colorClass = (i === 1) ? 'bg-[rgba(45,212,191,0.2)] border-[#2dd4bf] text-[#2dd4bf]' : 'bg-[#f43f5e] border-[#f43f5e] text-white';
+                        num.className = 'amap-step-num w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 font-sans ' + colorClass;
+                        num.textContent = i;
+                    }
+                } else {
+                    card.classList.add('is-waiting');
+                    if (badge) badge.classList.add('hidden');
+                    if (num) {
+                        num.className = 'amap-step-num w-8 h-8 rounded-full bg-white/5 border border-white/20 flex items-center justify-center font-bold text-xs text-[var(--dim)] shrink-0 font-sans';
+                        num.textContent = i;
+                    }
+                }
+            }
+        }
+
+        function amapAnimateNumber(el, startVal, endVal, duration) {
+            if (!el) return;
+            startVal = Number(startVal) || 0;
+            endVal = Number(endVal) || 0;
+            if (startVal === endVal) {
+                el.textContent = endVal;
+                return;
+            }
+            if (!window.gsap || amapIsReducedMotion()) {
+                el.textContent = endVal;
+                return;
+            }
+            var obj = { val: startVal };
+            gsap.to(obj, {
+                val: endVal,
+                duration: duration || 0.6,
+                ease: 'power1.out',
+                onUpdate: function() {
+                    el.textContent = Math.round(obj.val);
+                }
+            });
+        }
+
+        function amapUpdateCaseCard(session, originInfo) {
+            var card = document.getElementById('map-case-card');
+            if (!card) return;
+
+            var codeEl = document.getElementById('map-case-code');
+            var origEl = document.getElementById('map-case-origin');
+            var devEl = document.getElementById('map-case-device');
+            var scrEl = document.getElementById('map-case-screen');
+            var tzEl = document.getElementById('map-case-timezone');
+
+            var sessId = (session && session.session_id) ? session.session_id : 'SNF-DEMO';
+            var hexHash = sessId.replace(/[^a-zA-Z0-9]/g, '').slice(-8).toUpperCase();
+            if (codeEl) codeEl.textContent = '#' + (hexHash || '0000');
+
+            if (origEl) origEl.textContent = originInfo.label;
+            if (devEl) {
+                var ua = (session && session.user_agent) ? session.user_agent : '';
+                var deviceLabel = '-';
+                if (/Android/i.test(ua)) deviceLabel = 'Android Phone';
+                else if (/iPhone|iPad/i.test(ua)) deviceLabel = 'iOS Device';
+                else if (/Windows/i.test(ua)) deviceLabel = 'Windows PC';
+                else if (/Macintosh/i.test(ua)) deviceLabel = 'macOS Workstation';
+                else if (/Linux/i.test(ua)) deviceLabel = 'Linux Terminal';
+                else if (ua) deviceLabel = ua.split(' ')[0] || 'Browser Client';
+                devEl.textContent = deviceLabel;
+            }
+            if (scrEl) scrEl.textContent = (session && session.screen_res) ? session.screen_res : '-';
+            if (tzEl) tzEl.textContent = (session && session.timezone) ? session.timezone : '-';
+        }
+
+        function amapEnsureStageVisible() {
+            var stage = document.getElementById('map-stage');
+            if (!stage) return;
+            var rect = stage.getBoundingClientRect();
+            var vh = window.innerHeight || document.documentElement.clientHeight;
+            var visibleHeight = Math.min(rect.bottom, vh) - Math.max(rect.top, 0);
+            var visibleRatio = Math.max(0, visibleHeight) / rect.height;
+
+            if (visibleRatio < 0.5) {
+                stage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        function amapResolveOrigin(session, simTzOverride) {
+            var tz = simTzOverride || (session ? session.timezone : '') || (Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Jakarta');
+            var isSim = Boolean(simTzOverride);
+            var label = AMAP_TIMEZONE_LABELS[tz] || tz;
+            if (isSim) {
+                label = label + ' (simulasi)';
+            }
+            return {
+                timezone: tz,
+                label: label,
+                isSim: isSim
+            };
+        }
+
+        /* =====================================================================
+           [3 ADEGAN RADAR DENGAN CIRCULAR NODES & BEAM SHOOTING]
+           ===================================================================== */
+        function amapStopStory() {
+            if (amapCurrentTimeline) {
+                amapCurrentTimeline.kill();
+                amapCurrentTimeline = null;
+                window.amapCurrentTimeline = null;
+            }
+        }
+
+        // TAHAP 1: Pengguna Resmi -> Pos Pemeriksaan Node (Scan) -> Pusat Data VIP Node (~2.4s)
+        function amapPlayScene1(animate) {
+            amapStopStory();
+            amapCurrentScene = 1;
+            amapSetStepper(1, false);
+
+            var pathL1 = document.getElementById('amap-path-legit-to-cp');
+            var pathL2 = document.getElementById('amap-path-cp-to-vip');
+            var dotL = document.getElementById('amap-dot-legit');
+
+            var pathA1 = document.getElementById('amap-path-atk-to-cp');
+            var pathA2 = document.getElementById('amap-path-cp-to-decoy');
+            var dotA = document.getElementById('amap-dot-attack');
+
+            var pathTrack = document.getElementById('amap-path-track-reverse');
+            var trackHead = document.getElementById('amap-track-head');
+            var targetReticle = document.getElementById('amap-target-reticle');
+            var caseCard = document.getElementById('map-case-card');
+
+            var cpStatus = document.getElementById('amap-cp-status');
+            var cpRing = document.getElementById('amap-cp-ring-pulse');
+            var cpCore = document.getElementById('amap-cp-core');
+            var cpIcon = document.getElementById('amap-cp-icon');
+            var cpBg = document.getElementById('amap-cp-status-bg');
+
+            var atkTitle = document.getElementById('amap-attacker-title');
+            var atkSub = document.getElementById('amap-attacker-sub');
+            var decoyBadge = document.getElementById('amap-decoy-doc-badge');
+
+            if (caseCard) caseCard.classList.add('hidden');
+
+            amapSetSentence('Pengguna resmi menuju pos pemeriksaan, di-scan aman, lalu diteruskan ke Pusat Data VIP.');
+
+            // Reset Stage 2 & 3 elements
+            if (pathA1) gsap.set(pathA1, { strokeDashoffset: 260 });
+            if (pathA2) gsap.set(pathA2, { strokeDashoffset: 220 });
+            if (dotA) gsap.set(dotA, { opacity: 0 });
+
+            if (pathTrack) gsap.set(pathTrack, { opacity: 0 });
+            if (trackHead) gsap.set(trackHead, { opacity: 0 });
+            if (targetReticle) gsap.set(targetReticle, { opacity: 0 });
+            if (atkTitle) atkTitle.textContent = '⚠️ JALUR PENYADAP';
+            if (atkSub) atkSub.textContent = '[LOKASI ANONIM: ?]';
+            if (decoyBadge) {
+                decoyBadge.textContent = 'UMPAN TERPASANG';
+                decoyBadge.setAttribute('fill', 'var(--dim)');
+            }
+
+            if (!animate || amapIsReducedMotion() || !window.gsap) {
+                if (pathL1) gsap.set(pathL1, { strokeDashoffset: 0, opacity: 1 });
+                if (pathL2) gsap.set(pathL2, { strokeDashoffset: 0, opacity: 1 });
+                if (dotL) {
+                    dotL.setAttribute('cx', 310);
+                    dotL.setAttribute('cy', 326);
+                    gsap.set(dotL, { opacity: 1 });
+                }
+                if (cpStatus) cpStatus.textContent = '[ HASIL: TERVERIFIKASI SAH ✓ ]';
+                var sc1 = (amapFocusEvent && amapFocusEvent.type === 'LEGITIMATE') ? amapFocusEvent.score : 18;
+                updateThreatScore(sc1);
+                updateStaticHighlight('LEGITIMATE');
+                return;
+            }
+
+            var tl = gsap.timeline({
+                onComplete: function() {
+                    amapCurrentTimeline = null;
+                    window.amapCurrentTimeline = null;
+                }
+            });
+            amapCurrentTimeline = tl;
+            window.amapCurrentTimeline = tl;
+
+            // Part 1: Official user to Checkpoint Node (1.1s)
+            if (dotL) {
+                dotL.setAttribute('cx', 190);
+                dotL.setAttribute('cy', 185);
+                gsap.set(dotL, { opacity: 1 });
+            }
+            if (pathL1) gsap.set(pathL1, { strokeDashoffset: 260, opacity: 1 });
+            if (pathL2) gsap.set(pathL2, { strokeDashoffset: 220, opacity: 1 });
+
+            tl.to(pathL1, { strokeDashoffset: 0, duration: 1.1, ease: 'power1.inOut' });
+            var p1Len = pathL1 ? pathL1.getTotalLength() : 200;
+            var prog1 = { val: 0 };
+            tl.to(prog1, {
+                val: 1, duration: 1.1, ease: 'power1.inOut',
+                onUpdate: function() {
+                    if (!pathL1 || !dotL) return;
+                    var pt = pathL1.getPointAtLength(prog1.val * p1Len);
+                    dotL.setAttribute('cx', pt.x);
+                    dotL.setAttribute('cy', pt.y);
+                }
+            }, 0);
+
+            // Part 2: Scan in Checkpoint Node (Green verification pulse)
+            tl.add(function() {
+                if (cpStatus) {
+                    cpStatus.textContent = '[ SCAN: MEMERIKSA KREDENSIAL... ]';
+                    cpStatus.setAttribute('fill', '#2dd4bf');
+                }
+                if (cpBg) cpBg.setAttribute('stroke', '#2dd4bf');
+            });
+            if (cpRing) {
+                tl.fromTo(cpRing, { stroke: 'rgba(45,212,191,0.2)', r: 28 }, { stroke: '#2dd4bf', r: 34, duration: 0.28, yoyo: true, repeat: 2 });
+            }
+            // TEPAT DI POS PEMERIKSAAN: Nilai Threat Terukur!
+            tl.add(function() {
+                var sc = (amapFocusEvent && amapFocusEvent.type === 'LEGITIMATE') ? amapFocusEvent.score : 18;
+                updateThreatScore(sc);
+                updateStaticHighlight('LEGITIMATE');
+                if (cpStatus) cpStatus.textContent = '[ HASIL: TERVERIFIKASI SAH ✓ ]';
+            });
+
+            // Part 3: From Checkpoint Node to VIP Center Node
+            tl.to(pathL2, { strokeDashoffset: 0, duration: 1.1, ease: 'power1.inOut' });
+            var p2Len = pathL2 ? pathL2.getTotalLength() : 180;
+            var prog2 = { val: 0 };
+            tl.to(prog2, {
+                val: 1, duration: 1.1, ease: 'power1.inOut',
+                onUpdate: function() {
+                    if (!pathL2 || !dotL) return;
+                    var pt = pathL2.getPointAtLength(prog2.val * p2Len);
+                    dotL.setAttribute('cx', pt.x);
+                    dotL.setAttribute('cy', pt.y);
+                }
+            }, '-=1.1');
+
+            // VIP Core pulse on arrival
+            tl.to('#node-vip-center', { scale: 1.15, duration: 0.3, yoyo: true, repeat: 1, ease: 'back.out' });
+        }
+
+        // TAHAP 2: Penyerang Masuk -> Pos Pemeriksaan Node (Anomali) -> Belok ke Ruang Palsu Node (~5.8s)
+        // PERHATIAN: TAHAP 1 TETAP ADA DAN GAK HILANG!
+        function amapPlayScene2(animate) {
+            amapStopStory();
+            amapCurrentScene = 2;
+            amapSetStepper(2, false);
+
+            var pathL1 = document.getElementById('amap-path-legit-to-cp');
+            var pathL2 = document.getElementById('amap-path-cp-to-vip');
+            var dotL = document.getElementById('amap-dot-legit');
+
+            var pathA1 = document.getElementById('amap-path-atk-to-cp');
+            var pathA2 = document.getElementById('amap-path-cp-to-decoy');
+            var dotA = document.getElementById('amap-dot-attack');
+
+            var pathTrack = document.getElementById('amap-path-track-reverse');
+            var trackHead = document.getElementById('amap-track-head');
+            var targetReticle = document.getElementById('amap-target-reticle');
+            var caseCard = document.getElementById('map-case-card');
+
+            var cpStatus = document.getElementById('amap-cp-status');
+            var cpRing = document.getElementById('amap-cp-ring-pulse');
+            var cpBg = document.getElementById('amap-cp-status-bg');
+
+            var atkTitle = document.getElementById('amap-attacker-title');
+            var atkSub = document.getElementById('amap-attacker-sub');
+            var decoyBadge = document.getElementById('amap-decoy-doc-badge');
+
+            if (caseCard) caseCard.classList.add('hidden');
+
+            amapSetSentence('Penyusup anonim terdeteksi di pos pemeriksaan! AI menandai anomali dan membelokkannya ke Ruang Palsu. Alur VIP tetap aman.');
+
+            // PERSIST TAHAP 1 (GAK HILANG)
+            if (pathL1) gsap.set(pathL1, { strokeDashoffset: 0, opacity: 0.65 });
+            if (pathL2) gsap.set(pathL2, { strokeDashoffset: 0, opacity: 0.65 });
+            if (dotL) {
+                dotL.setAttribute('cx', 310);
+                dotL.setAttribute('cy', 326);
+                gsap.set(dotL, { opacity: 0.8 });
+            }
+
+            // Reset Stage 3 elements
+            if (pathTrack) gsap.set(pathTrack, { opacity: 0 });
+            if (trackHead) gsap.set(trackHead, { opacity: 0 });
+            if (targetReticle) gsap.set(targetReticle, { opacity: 0 });
+            if (atkTitle) atkTitle.textContent = '⚠️ JALUR PENYADAP';
+            if (atkSub) atkSub.textContent = '[LOKASI ANONIM: ?]';
+
+            // PENTING: Sebelum melewati pos pemeriksaan, nilai threat BELUM keluar!
+            if (animate) {
+                updateThreatScore(18);
+                updateStaticHighlight(null);
+            }
+
+            if (!animate || amapIsReducedMotion() || !window.gsap) {
+                if (pathA1) gsap.set(pathA1, { strokeDashoffset: 0, opacity: 1 });
+                if (pathA2) gsap.set(pathA2, { strokeDashoffset: 0, opacity: 1 });
+                if (dotA) {
+                    dotA.setAttribute('cx', 570);
+                    dotA.setAttribute('cy', 328);
+                    dotA.setAttribute('fill', '#fbbf24');
+                    gsap.set(dotA, { opacity: 1 });
+                }
+                if (cpStatus) {
+                    cpStatus.textContent = '[ PENGALIHAN OTOMATIS: RUANG DECOY ]';
+                    cpStatus.setAttribute('fill', '#fbbf24');
+                }
+                if (cpBg) cpBg.setAttribute('stroke', '#fbbf24');
+                if (decoyBadge) {
+                    decoyBadge.textContent = '📄 DOKUMEN UMPAN DITERIMA';
+                    decoyBadge.setAttribute('fill', '#fbbf24');
+                }
+                var sc2 = (amapFocusEvent && amapFocusEvent.type === 'MIRAGE_ENGAGED') ? amapFocusEvent.score : 88;
+                updateThreatScore(sc2);
+                updateStaticHighlight('MIRAGE_ENGAGED');
+                amapScene2Completed = true;
+                window.amapScene2Completed = true;
+                return;
+            }
+
+            var tl = gsap.timeline({
+                onComplete: function() {
+                    amapScene2Completed = true;
+                    window.amapScene2Completed = true;
+                    amapCurrentTimeline = null;
+                    window.amapCurrentTimeline = null;
+                }
+            });
+            amapCurrentTimeline = tl;
+            window.amapCurrentTimeline = tl;
+
+            // Part 1: Attacker to Checkpoint Node (1.2s - Belum melewati pos, skor tetap aman/baseline)
+            if (dotA) {
+                dotA.setAttribute('cx', 690);
+                dotA.setAttribute('cy', 185);
+                dotA.setAttribute('fill', '#f43f5e');
+                gsap.set(dotA, { opacity: 1 });
+            }
+            if (pathA1) gsap.set(pathA1, { strokeDashoffset: 260, opacity: 1 });
+            if (pathA2) gsap.set(pathA2, { strokeDashoffset: 220, opacity: 1 });
+
+            tl.to(pathA1, { strokeDashoffset: 0, duration: 1.2, ease: 'power2.in' });
+            var pa1Len = pathA1 ? pathA1.getTotalLength() : 200;
+            var progA1 = { val: 0 };
+            tl.to(progA1, {
+                val: 1, duration: 1.2, ease: 'power2.in',
+                onUpdate: function() {
+                    if (!pathA1 || !dotA) return;
+                    var pt = pathA1.getPointAtLength(progA1.val * pa1Len);
+                    dotA.setAttribute('cx', pt.x);
+                    dotA.setAttribute('cy', pt.y);
+                }
+            }, 0);
+
+            // Part 2: Scan in Checkpoint Node (Anomaly Alert! Red Flash)
+            tl.add(function() {
+                if (cpStatus) {
+                    cpStatus.textContent = '[ SCAN: MEMERIKSA PERILAKU & TOKEN... ]';
+                    cpStatus.setAttribute('fill', '#f43f5e');
+                }
+                if (cpBg) cpBg.setAttribute('stroke', '#f43f5e');
+            });
+            if (cpRing) {
+                tl.fromTo(cpRing, { stroke: 'rgba(244,63,94,0.2)', r: 28 }, { stroke: '#f43f5e', r: 36, duration: 0.22, yoyo: true, repeat: 3 });
+            }
+            tl.to('#node-checkpoint', { scale: 1.1, duration: 0.2, yoyo: true, repeat: 1 });
+            // TEPAT DI POS PEMERIKSAAN: Nilai Threat Terukur!
+            tl.add(function() {
+                var sc = (amapFocusEvent && amapFocusEvent.type === 'MIRAGE_ENGAGED') ? amapFocusEvent.score : 88;
+                updateThreatScore(sc);
+                updateStaticHighlight('MIRAGE_ENGAGED');
+                if (cpStatus) {
+                    cpStatus.textContent = '[ ANOMALI TERDETEKSI: SKOR ' + sc + '% ! ]';
+                    cpStatus.setAttribute('fill', '#f43f5e');
+                }
+            });
+            tl.to({}, { duration: 0.35 }); // jeda singkat agar skor di pos terbaca jelas
+            tl.add(function() {
+                if (cpStatus) {
+                    cpStatus.textContent = '[ PENGALIHAN OTOMATIS: RUANG DECOY ]';
+                    cpStatus.setAttribute('fill', '#fbbf24');
+                }
+                if (cpBg) cpBg.setAttribute('stroke', '#fbbf24');
+            });
+
+            // Part 3: Divert to Decoy Node
+            tl.to(pathA2, { strokeDashoffset: 0, duration: 1.2, ease: 'power1.out' });
+            var pa2Len = pathA2 ? pathA2.getTotalLength() : 180;
+            var progA2 = { val: 0 };
+            tl.to(progA2, {
+                val: 1, duration: 1.2, ease: 'power1.out',
+                onUpdate: function() {
+                    if (!pathA2 || !dotA) return;
+                    var pt = pathA2.getPointAtLength(progA2.val * pa2Len);
+                    dotA.setAttribute('cx', pt.x);
+                    dotA.setAttribute('cy', pt.y);
+                    dotA.setAttribute('fill', '#fbbf24');
+                }
+            }, '-=1.2');
+
+            // Decoy room capture pulse
+            tl.to('#node-decoy-chamber', { scale: 1.15, duration: 0.3, yoyo: true, repeat: 1 });
+            tl.add(function() {
+                if (decoyBadge) {
+                    decoyBadge.textContent = '📄 DOKUMEN UMPAN DITERIMA';
+                    decoyBadge.setAttribute('fill', '#fbbf24');
+                }
+                amapSetSentence('Dokumen palsu dikirim ke penyusup. Sekarang kita tunggu dia membukanya.');
+            });
+        }
+
+        // TAHAP 3: Di Ruang Palsu dokumen dibuka -> Garis melesat KELUAR DARI RUANG PALSU KE PENYERANG! (~6s)
+        // PERHATIAN: TAHAP 1 & TAHAP 2 TETAP ADA DAN GAK HILANG!
+        function amapPlayScene3(animate, overrideTz) {
+            if (!amapScene2Completed && !overrideTz) {
+                return;
+            }
+
+            amapStopStory();
+            amapCurrentScene = 3;
+            amapSetStepper(3, false);
+
+            var pathL1 = document.getElementById('amap-path-legit-to-cp');
+            var pathL2 = document.getElementById('amap-path-cp-to-vip');
+            var dotL = document.getElementById('amap-dot-legit');
+
+            var pathA1 = document.getElementById('amap-path-atk-to-cp');
+            var pathA2 = document.getElementById('amap-path-cp-to-decoy');
+            var dotA = document.getElementById('amap-dot-attack');
+
+            var pathTrack = document.getElementById('amap-path-track-reverse');
+            var trackHead = document.getElementById('amap-track-head');
+            var pulseDecoy = document.getElementById('amap-pulse-decoy');
+            var targetReticle = document.getElementById('amap-target-reticle');
+            var caseCard = document.getElementById('map-case-card');
+
+            var cpStatus = document.getElementById('amap-cp-status');
+            var cpBg = document.getElementById('amap-cp-status-bg');
+
+            var atkTitle = document.getElementById('amap-attacker-title');
+            var atkSub = document.getElementById('amap-attacker-sub');
+            var decoyBadge = document.getElementById('amap-decoy-doc-badge');
+
+            var simSelect = document.getElementById('map-sim-select');
+            var simVal = overrideTz || (simSelect ? simSelect.value : '');
+            var originInfo = amapResolveOrigin(amapFocusSession, simVal);
+
+            amapSetSentence('Penyusup membuka dokumen di Ruang Palsu. Sinyal canary melacak balik asal koneksi: terdeteksi dari ' + originInfo.label + '!');
+
+            // PERSIST TAHAP 1 (GAK HILANG)
+            if (pathL1) gsap.set(pathL1, { strokeDashoffset: 0, opacity: 0.5 });
+            if (pathL2) gsap.set(pathL2, { strokeDashoffset: 0, opacity: 0.5 });
+            if (dotL) {
+                dotL.setAttribute('cx', 310);
+                dotL.setAttribute('cy', 326);
+                gsap.set(dotL, { opacity: 0.6 });
+            }
+
+            // PERSIST TAHAP 2 (GAK HILANG)
+            if (pathA1) gsap.set(pathA1, { strokeDashoffset: 0, opacity: 0.6 });
+            if (pathA2) gsap.set(pathA2, { strokeDashoffset: 0, opacity: 0.6 });
+            if (dotA) {
+                dotA.setAttribute('cx', 570);
+                dotA.setAttribute('cy', 328);
+                dotA.setAttribute('fill', '#fbbf24');
+                gsap.set(dotA, { opacity: 0.8 });
+            }
+
+            if (cpStatus) {
+                cpStatus.textContent = '[ STATUS: JEBAKAN SEDANG BERJALAN ]';
+                cpStatus.setAttribute('fill', '#fbbf24');
+            }
+            if (cpBg) cpBg.setAttribute('stroke', '#fbbf24');
+
+            // Target pill update
+            var pillText = document.getElementById('amap-origin-pill-text');
+            var pillBg = document.getElementById('amap-origin-pill-bg');
+            if (pillText) pillText.textContent = '🎯 TERLACAK: ' + escapeAmap(originInfo.label);
+            if (pillBg && pillText) {
+                var textW = pillText.textContent.length * 8 + 32;
+                pillBg.setAttribute('width', textW);
+                pillBg.setAttribute('x', -textW / 2);
+            }
+
+            amapUpdateCaseCard(amapFocusSession, originInfo);
+
+            if (!animate || amapIsReducedMotion() || !window.gsap) {
+                if (decoyBadge) {
+                    decoyBadge.textContent = '⚡ DOKUMEN DIBUKA! CANARY MEMANCAR';
+                    decoyBadge.setAttribute('fill', '#f43f5e');
+                }
+                if (pathTrack) gsap.set(pathTrack, { opacity: 1, strokeDashoffset: 0 });
+                if (targetReticle) gsap.set(targetReticle, { opacity: 1, scale: 1 });
+                if (atkTitle) atkTitle.textContent = '🎯 PENYADAP TERKUNCI!';
+                if (atkSub) {
+                    atkSub.textContent = '[ASAL: ' + originInfo.label + ']';
+                    atkSub.setAttribute('fill', '#fff1f2');
+                }
+                if (caseCard) caseCard.classList.remove('hidden');
+                var sc3 = (amapFocusEvent && amapFocusEvent.type === 'COUNTER_INTEL') ? amapFocusEvent.score : 99;
+                updateThreatScore(sc3);
+                updateStaticHighlight('COUNTER_INTEL');
+                return;
+            }
+
+            var tl = gsap.timeline({
+                onComplete: function() {
+                    amapCurrentTimeline = null;
+                    window.amapCurrentTimeline = null;
+                }
+            });
+            amapCurrentTimeline = tl;
+            window.amapCurrentTimeline = tl;
+
+            // Part 1: Decoy document opened pulse wave (1.0s)
+            if (decoyBadge) {
+                decoyBadge.textContent = '⚡ DOKUMEN DIBUKA! CANARY MEMANCAR';
+                decoyBadge.setAttribute('fill', '#f43f5e');
+            }
+            if (pulseDecoy) {
+                tl.set(pulseDecoy, { opacity: 1, attr: { r: 10 } });
+                tl.to(pulseDecoy, { attr: { r: 50 }, opacity: 0, duration: 0.8, repeat: 2, ease: 'power1.out' });
+            }
+
+            // TEPAT KETIKA CANARY MEMANCAR DARI RUANG PALSU: Nilai Threat Counter-Intel Aktif!
+            tl.add(function() {
+                var sc = (amapFocusEvent && amapFocusEvent.type === 'COUNTER_INTEL') ? amapFocusEvent.score : 99;
+                updateThreatScore(sc);
+                updateStaticHighlight('COUNTER_INTEL');
+            }, 0.3);
+
+            // Part 2: SHOOTING BEAM ANIMATION OUT FROM RUANG PALSU TO ATTACKER LOCATION!
+            if (pathTrack) {
+                var trackLen = pathTrack.getTotalLength() || 280;
+                pathTrack.style.strokeDasharray = trackLen + ' ' + trackLen;
+                pathTrack.style.strokeDashoffset = trackLen;
+                gsap.set(pathTrack, { opacity: 1 });
+                if (trackHead) gsap.set(trackHead, { opacity: 1, cx: 570, cy: 328 });
+
+                // Smoothly draw the line outward from Decoy to Attacker
+                tl.to(pathTrack, { strokeDashoffset: 0, duration: 1.5, ease: 'power2.inOut' }, 0.3);
+
+                // Laser head travels along with the tip of the beam
+                var progTrack = { val: 0 };
+                tl.to(progTrack, {
+                    val: 1, duration: 1.5, ease: 'power2.inOut',
+                    onUpdate: function() {
+                        if (!pathTrack || !trackHead) return;
+                        var pt = pathTrack.getPointAtLength(progTrack.val * trackLen);
+                        trackHead.setAttribute('cx', pt.x);
+                        trackHead.setAttribute('cy', pt.y);
+                    }
+                }, 0.3);
+            }
+
+            // Part 3: Arrival at Attacker -> Target Reticle Locks on & Identity Exposed!
+            tl.add(function() {
+                if (atkTitle) atkTitle.textContent = '🎯 PENYADAP TERKUNCI!';
+                if (atkSub) {
+                    atkSub.textContent = '[ASAL: ' + originInfo.label + ']';
+                    atkSub.setAttribute('fill', '#fff1f2');
+                }
+                if (trackHead) gsap.set(trackHead, { opacity: 0 });
+            }, 1.8);
+
+            if (targetReticle) {
+                tl.fromTo(targetReticle, { scale: 0.5, opacity: 0 }, { scale: 1.0, opacity: 1, duration: 0.5, ease: 'back.out' }, 1.8);
+            }
+
+            // Part 4: Case Card appears
+            tl.add(function() {
+                if (caseCard) {
+                    caseCard.classList.remove('hidden');
+                    gsap.fromTo(caseCard, { opacity: 0, y: 15 }, { opacity: 1, y: 0, duration: 0.4 });
+                }
+                amapSetSentence('Asal penyusup ketahuan: perkiraan dari zona waktu perangkat (' + originInfo.label + '). Jejaknya tercatat sebagai bukti.');
+            }, 2.0);
+        }
+
+        /* =====================================================================
+           [STATE POLLING & BASELINE COUNTERS]
+           ===================================================================== */
+        async function amapFetchState() {
+            try {
+                var res = await fetch('/api/state', {
+                    headers: { 'X-Admin-Key': MIRAGE_ADMIN_KEY }
+                });
+                if (!res.ok) return;
+                var data = await res.json();
+
+                var adversaries = data.adversaries || [];
+                var events = data.events || [];
+
+                // 1. Baseline Counters
+                var currentAtt = events.filter(function(e) { return e.type === 'MIRAGE_ENGAGED' || e.type === 'COUNTER_INTEL'; }).length;
+                var currentAdv = adversaries.length;
+
+                if (amapInitialAttempts === null) {
+                    amapInitialAttempts = currentAtt;
+                    amapInitialAdversaries = currentAdv;
+                }
+
+                var diffAtt = Math.max(0, currentAtt - amapInitialAttempts);
+                var diffAdv = Math.max(0, currentAdv - amapInitialAdversaries);
+
+                var elAtt = document.getElementById('map-stat-attempts');
+                var elAdv = document.getElementById('map-stat-adversaries');
+                if (elAtt && elAtt.textContent !== String(diffAtt)) {
+                    amapAnimateNumber(elAtt, Number(elAtt.textContent) || 0, diffAtt, 0.5);
+                }
+                if (elAdv && elAdv.textContent !== String(diffAdv)) {
+                    amapAnimateNumber(elAdv, Number(elAdv.textContent) || 0, diffAdv, 0.5);
+                }
+
+                // 2. Active Session & Event Tracking
+                if (adversaries.length > 0) {
+                    amapFocusSession = adversaries[0]; // API mengurutkan terbaru di indeks 0
+                }
+                if (events.length > 0) {
+                    amapFocusEvent = events[0]; // API mengurutkan terbaru di indeks 0
+                }
+
+            } catch (err) {
+                // Background polling fail-safe
+            }
+        }
+
+        /* =====================================================================
+           [BUTTON BINDINGS & CONTROLS]
+           ===================================================================== */
+        function amapBindSimulationButtons() {
+            var btnLegit = document.querySelector('button[onclick*="simLegit"]');
+            var btnTokenLeak = document.querySelector('button[onclick*="simTokenLeakBot"]');
+            var btnAttack = document.querySelector('button[onclick*="simAttack"]');
+            var btnSandbox = document.querySelector('button[onclick*="openSandbox"]');
+
+            // Adegan kini diputar oleh fungsi simulasi SETELAH state diperbarui (skor gauge = skor event nyata).
+            if (btnSandbox) {
+                btnSandbox.addEventListener('click', function() {
+                    if (!amapScene2Completed) {
+                        return;
+                    }
+                    amapEnsureStageVisible();
+                    amapPlayScene3(true);
+                });
+            }
+
+            // Stepper cards click handlers (Directly interactive)
+            var stepCard1 = document.getElementById('map-step-1');
+            var stepCard2 = document.getElementById('map-step-2');
+            var stepCard3 = document.getElementById('map-step-3');
+
+            if (stepCard1) {
+                stepCard1.style.cursor = 'pointer';
+                stepCard1.addEventListener('click', function() {
+                    amapPlayScene1(true);
+                });
+            }
+            if (stepCard2) {
+                stepCard2.style.cursor = 'pointer';
+                stepCard2.addEventListener('click', function() {
+                    amapPlayScene2(true);
+                });
+            }
+            if (stepCard3) {
+                stepCard3.style.cursor = 'pointer';
+                stepCard3.addEventListener('click', function() {
+                    var simSelect = document.getElementById('map-sim-select');
+                    amapPlayScene3(true, simSelect ? simSelect.value : '');
+                });
+            }
+
+            // Replay Button
+            var replayBtn = document.getElementById('map-btn-replay');
+            if (replayBtn) {
+                replayBtn.addEventListener('click', function() {
+                    if (amapCurrentScene === 1) {
+                        amapPlayScene1(true);
+                    } else if (amapCurrentScene === 2) {
+                        amapPlayScene2(true);
+                    } else {
+                        var simSelect = document.getElementById('map-sim-select');
+                        amapPlayScene3(true, simSelect ? simSelect.value : '');
+                    }
+                });
+            }
+
+            // Simulation Select Dropdown
+            var simSelect = document.getElementById('map-sim-select');
+            if (simSelect) {
+                simSelect.addEventListener('change', function() {
+                    var mockSession = amapFocusSession || {
+                        session_id: 'demo-sim-01',
+                        timezone: simSelect.value,
+                        user_agent: navigator.userAgent,
+                        screen_res: window.screen.width + 'x' + window.screen.height
+                    };
+                    amapFocusSession = mockSession;
+                    amapEnsureStageVisible();
+                    if (amapScene2Completed || amapCurrentScene === 3) {
+                        amapPlayScene3(true, simSelect.value);
+                    }
+                });
+            }
+        }
+
+        // Window Preview API
+        window.__previewStory = function(tz, sceneNum) {
+            sceneNum = sceneNum || 3;
+            var localTz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Jakarta';
+            var mockSession = {
+                session_id: 'preview-' + (tz ? tz.replace(/\//g, '_') : 'custom'),
+                timezone: tz || localTz,
+                user_agent: navigator.userAgent,
+                screen_res: window.screen.width + 'x' + window.screen.height
+            };
+            var mockEvent = {
+                time: new Date().toISOString(),
+                type: sceneNum >= 3 ? 'COUNTER_INTEL' : (sceneNum === 2 ? 'MIRAGE_ENGAGED' : 'LEGITIMATE'),
+                score: sceneNum >= 3 ? 99 : (sceneNum === 2 ? 88 : 18),
+                detail: 'Simulation Preview'
+            };
+            amapFocusSession = mockSession;
+            amapFocusEvent = mockEvent;
+
+            if (sceneNum === 1) {
+                amapPlayScene1(true);
+            } else if (sceneNum === 2) {
+                amapPlayScene2(true);
+            } else {
+                amapScene2Completed = true;
+                window.amapScene2Completed = true;
+                amapPlayScene3(true, tz);
+            }
+        };
+        window.__previewMap = window.__previewStory;
+
+        /* =====================================================================
+           [INITIALIZATION]
+           ===================================================================== */
+        document.addEventListener('DOMContentLoaded', function() {
+            amapPlayScene1(false);
+            amapBindSimulationButtons();
+            amapFetchState();
+            setInterval(amapFetchState, 2000);
+        });
+    </script>
+    <!-- ATTACK-MAP:END -->
+</body>
+</html>

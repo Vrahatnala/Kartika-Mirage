@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+mirage-engine/data/
+mirage-engine/generated_decoys/
+mirage-engine/mirage_behavior_model.joblib
+test*.pdf
+*.db
